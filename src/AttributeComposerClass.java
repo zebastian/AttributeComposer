@@ -1,5 +1,5 @@
 //+======================================================================
-// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/Ds_ComposerClass.java,v $
+// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/AttributeComposerClass.java,v $
 //
 // Project:   	Tango Device Server
 //
@@ -8,9 +8,9 @@
 //              which exists only once for all the  Ds_Composer object
 //              It inherits from the DeviceClass class.
 //
-// $Author: syldup $
+// $Author: katyho $
 //
-// $Revision: 1.1.1.1 $
+// $Revision: 1.1 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -26,20 +26,26 @@
 //         (c) - Software Engineering Group - ESRF
 //=============================================================================
 
-package Ds_Composer;
+package AttributeComposer;
 
-import java.util.*;
-import org.omg.CORBA.*;
-import fr.esrf.Tango.*;
-import fr.esrf.TangoDs.*;
-import fr.esrf.TangoApi.*;
+import java.util.Vector;
 
-public class Ds_ComposerClass extends DeviceClass implements TangoConst
+import fr.esrf.Tango.DevFailed;
+import fr.esrf.Tango.DispLevel;
+import fr.esrf.TangoApi.DbDatum;
+import fr.esrf.TangoDs.DeviceClass;
+import fr.esrf.TangoDs.DeviceImpl;
+import fr.esrf.TangoDs.SpectrumAttr;
+import fr.esrf.TangoDs.TangoConst;
+import fr.esrf.TangoDs.UserDefaultAttrProp;
+import fr.esrf.TangoDs.Util;
+
+public class AttributeComposerClass extends DeviceClass implements TangoConst
 {
 	/**
-	 *	Ds_ComposerClass class instance (it is a singleton).
+	 *	AttributeComposerClass class instance (it is a singleton).
 	 */
-	private static Ds_ComposerClass	_instance = null;
+	private static AttributeComposerClass	_instance = null;
 
 	/**
 	 *	Class properties array.
@@ -56,15 +62,15 @@ public class Ds_ComposerClass extends DeviceClass implements TangoConst
 //
 // method : 		instance()
 // 
-// description : 	static method to retrieve the Ds_ComposerClass object 
+// description : 	static method to retrieve the AttributeComposerClass object 
 //					once it has been initialised
 //
 //===================================================================			
-	public static Ds_ComposerClass instance()
+	public static AttributeComposerClass instance()
 	{
 		if (_instance == null)
 		{
-			System.err.println("Ds_ComposerClass is not initialised !!!");
+			System.err.println("AttributeComposerClass is not initialised !!!");
 			System.err.println("Exiting");
 			System.exit(-1);
 		}
@@ -75,40 +81,40 @@ public class Ds_ComposerClass extends DeviceClass implements TangoConst
 //
 // method : 		Init()
 // 
-// description : 	static method to create/retrieve the Ds_ComposerClass
+// description : 	static method to create/retrieve the AttributeComposerClass
 //					object. This method is the only one which enables a 
 //					user to create the object
 //
 // in :			- class_name : The class name
 //
 //===================================================================			
-	public static Ds_ComposerClass init(String class_name) throws DevFailed
+	public static AttributeComposerClass init(String class_name) throws DevFailed
 	{
 		if (_instance == null)
 		{
-			_instance = new Ds_ComposerClass(class_name);
+			_instance = new AttributeComposerClass(class_name);
 		}
 		return _instance;
 	}
 	
 //===================================================================			
 //
-// method : 		Ds_ComposerClass()
+// method : 		AttributeComposerClass()
 // 
-// description : 	constructor for the Ds_ComposerClass class
+// description : 	constructor for the AttributeComposerClass class
 //
 // argument : in : 	- name : The class name
 //
 //===================================================================			
-	protected Ds_ComposerClass(String name) throws DevFailed
+	protected AttributeComposerClass(String name) throws DevFailed
 	{
 		super(name);
 
-		Util.out2.println("Entering Ds_ComposerClass constructor");
+		Util.out2.println("Entering AttributeComposerClass constructor");
 		write_class_property();
 		get_class_property();
 	
-		Util.out2.println("Leaving Ds_ComposerClass constructor");
+		Util.out2.println("Leaving AttributeComposerClass constructor");
 	}
 	
 //===================================================================			
@@ -125,16 +131,29 @@ public class Ds_ComposerClass extends DeviceClass implements TangoConst
 			"",
 			"",
 			DispLevel.OPERATOR));
+		
 		command_list.addElement(new GetAttributeNameForIndexClass("GetAttributeNameForIndex",
 			Tango_DEV_SHORT, Tango_DEV_STRING,
 			"The index of the spectrum data",
 			"The attributeName corresponding to the argin index",
 			DispLevel.OPERATOR));
+		
+		command_list.addElement(new GetTangoQualitiesClass("GetTangoQualities",
+				Tango_DEV_VOID, Tango_DEVVAR_STRINGARRAY,
+				"",
+				"The list of the qualities",
+				DispLevel.OPERATOR));
+			
+		command_list.addElement(new GetPriorityForQualityClass("GetPriorityForQuality",
+				Tango_DEV_STRING, Tango_DEV_SHORT,
+				"The qualities name (ex:VALID, ALARM)",
+				"The priority of the quality",
+				DispLevel.OPERATOR));
 
 		//	add polling if any
 		for (int i=0 ; i<command_list.size(); i++)
 		{
-			Command	cmd = (Command)command_list.elementAt(i);
+			/*Command	cmd = (Command)*/command_list.elementAt(i);
 		}
 	}
 
@@ -158,7 +177,7 @@ public class Ds_ComposerClass extends DeviceClass implements TangoConst
 						
 			// Create device and add it into the device list
 			//----------------------------------------------
-			device_list.addElement(new Ds_Composer(this, devlist[i]));
+			device_list.addElement(new AttributeComposer(this, devlist[i]));
 
 			// Export device to the outside world
 			//----------------------------------------------
@@ -183,6 +202,42 @@ public class Ds_ComposerClass extends DeviceClass implements TangoConst
 		spectrum_result_prop.set_label("Spectrum Result");
 		spectrum_result.set_default_properties(spectrum_result_prop);
 		att_list.addElement(spectrum_result);
+		
+//		Attribute : runningAttributesList
+		SpectrumAttr running_attribute_list = 
+			new SpectrumAttr("runningAttributesList", Tango_DEV_STRING, 1000);
+		UserDefaultAttrProp	running_attribute_list_prop = new UserDefaultAttrProp();
+		running_attribute_list_prop.set_label("Running Attributes");
+		running_attribute_list_prop.set_description("The list of the running attributes.");
+		running_attribute_list.set_default_properties(running_attribute_list_prop);
+		att_list.addElement(running_attribute_list);
+
+		//	Attribute : unknownAttributesList
+		SpectrumAttr	unknown_attribute_list = 
+			new SpectrumAttr("unknownAttributesList", Tango_DEV_STRING, 1000);
+		UserDefaultAttrProp	unknown_attribute_list_prop = new UserDefaultAttrProp();
+		unknown_attribute_list_prop.set_label("Unknown Attributes");
+		unknown_attribute_list_prop.set_description("The list of unknown attributes.");
+		unknown_attribute_list.set_default_properties(unknown_attribute_list_prop);
+		att_list.addElement(unknown_attribute_list);
+
+		//	Attribute : attributesQualityList
+		SpectrumAttr	attributes_state_list = 
+			new SpectrumAttr("attributesQualityList", Tango_DEV_STRING, 1000);
+		UserDefaultAttrProp	attributes_state_list_prop = new UserDefaultAttrProp();
+		attributes_state_list_prop.set_label("Attributes Quality");
+		attributes_state_list_prop.set_description("The list of the attribute quality in string format.\nCall GetAttributeNameForIndex to know which attribute corresponds to an index of the spectrum");
+		attributes_state_list.set_default_properties(attributes_state_list_prop);
+		att_list.addElement(attributes_state_list);
+
+		//	Attribute : attributesNumberPriorityList
+		SpectrumAttr	attributes_number_priority_list = 
+			new SpectrumAttr("attributesNumberPriorityList", Tango_DEV_SHORT, 1000);
+		UserDefaultAttrProp	attributes_number_priority_list_prop = new UserDefaultAttrProp();
+		attributes_number_priority_list_prop.set_label("Attributes Priority");
+		attributes_number_priority_list_prop.set_description("The list of the attributes quality in priority number format.\nCall GetAttributeNameForIndex to know which attributes corresponds to an index of the spectrum.\nCall GetPriorityForQuality to know the values of tango qualities.");
+		attributes_number_priority_list.set_default_properties(attributes_number_priority_list_prop);
+		att_list.addElement(attributes_number_priority_list);
 
 	}
 
@@ -223,7 +278,7 @@ public class Ds_ComposerClass extends DeviceClass implements TangoConst
 		//	Call database and extract values
 		//--------------------------------------------
 		cl_prop = get_db_class().get_property(propnames);
-		int	i = -1;
+		//int	i = -1;
 
 		//	End of Automatic code generation
 		//-------------------------------------------------------------
@@ -246,7 +301,7 @@ public class Ds_ComposerClass extends DeviceClass implements TangoConst
 		//--------------------------------------------
 		DbDatum[]	data = new DbDatum[2];
 		data[0] = new DbDatum("ProjectTitle");
-		data[0].insert("ds_Composer");
+		data[0].insert("AttributeComposer");
 
 		data[1] = new DbDatum("Description");
 		data[1].insert("This device composed a spectrum attribute from a list of scalar attribute.");

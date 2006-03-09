@@ -4,11 +4,11 @@
 // Project:      Tango Device Server
 //
 // Description:  Java source code for the command TemplateClass of the
-//               Ds_Composer class.
+//               AttributeComposer class.
 //
-// $Author: syldup $
+// $Author: katyho $
 //
-// $Revision: 1.1.1.1 $
+// $Revision: 1.2 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -27,10 +27,10 @@
 
 
 /**
- * @author	$Author: syldup $
- * @version	$Revision: 1.1.1.1 $
+ * @author	$Author: katyho $
+ * @version	$Revision: 1.2 $
  */
-package Ds_Composer;
+package AttributeComposer;
 
 
 
@@ -100,7 +100,7 @@ public class GetAttributeNameForIndexClass extends Command implements TangoConst
 	{
 		Util.out2.println("GetAttributeNameForIndexClass.execute(): arrived");
 		short argin = extract_DevShort(in_any);
-		return insert(((Ds_Composer)(device)).get_attribute_name_for_index(argin));
+		return insert(((AttributeComposer)(device)).get_attribute_name_for_index(argin));
 	}
 
 	//===============================================================

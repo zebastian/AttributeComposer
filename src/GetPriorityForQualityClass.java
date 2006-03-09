@@ -1,5 +1,5 @@
 //+======================================================================
-// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/ResetClass.java,v $
+// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetPriorityForQualityClass.java,v $
 //
 // Project:      Tango Device Server
 //
@@ -8,7 +8,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.2 $
+// $Revision: 1.1 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -28,7 +28,7 @@
 
 /**
  * @author	$Author: katyho $
- * @version	$Revision: 1.2 $
+ * @version	$Revision: 1.1 $
  */
 package AttributeComposer;
 
@@ -40,29 +40,29 @@ import fr.esrf.TangoDs.*;
 
 /**
  *	Class Description:
- *	This command allows to take in account the new attribute or removed and restart the processing.
+ *	This command return the priority associated to a given State.
 */
 
 
-public class ResetClass extends Command implements TangoConst
+public class GetPriorityForQualityClass extends Command implements TangoConst
 {
 	//===============================================================
 	/**
-	 *	Constructor for Command class ResetClass
+	 *	Constructor for Command class GetPriorityForStateClass
 	 *
 	 *	@param	name	command name
 	 *	@param	in	argin type
 	 *	@param	out	argout type
 	 */
 	//===============================================================
-	public ResetClass(String name,int in,int out)
+	public GetPriorityForQualityClass(String name,int in,int out)
 	{
 		super(name, in, out);
 	}
 
 	//===============================================================
 	/**
-	 *	Constructor for Command class ResetClass
+	 *	Constructor for Command class GetPriorityForStateClass
 	 *
 	 *	@param	name            command name
 	 *	@param	in              argin type
@@ -71,13 +71,13 @@ public class ResetClass extends Command implements TangoConst
 	 *	@param	out_comments    argout description
 	 */
 	//===============================================================
-	public ResetClass(String name,int in,int out, String in_comments, String out_comments)
+	public GetPriorityForQualityClass(String name,int in,int out, String in_comments, String out_comments)
 	{
 		super(name, in, out, in_comments, out_comments);
 	}
 	//===============================================================
 	/**
-	 *	Constructor for Command class ResetClass
+	 *	Constructor for Command class GetPriorityForStateClass
 	 *
 	 *	@param	name            command name
 	 *	@param	in              argin type
@@ -87,7 +87,7 @@ public class ResetClass extends Command implements TangoConst
 	 *	@param	level           The command display type OPERATOR or EXPERT
 	 */
 	//===============================================================
-	public ResetClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
+	public GetPriorityForQualityClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
 	{
 		super(name, in, out, in_comments, out_comments, level);
 	}
@@ -98,9 +98,9 @@ public class ResetClass extends Command implements TangoConst
 	//===============================================================
 	public Any execute(DeviceImpl device,Any in_any) throws DevFailed
 	{
-		Util.out2.println("ResetClass.execute(): arrived");
-		((AttributeComposer)(device)).reset();
-		return insert();
+		Util.out2.println("GetPriorityForQualityClass.execute(): arrived");
+		String argin = extract_DevString(in_any);
+		return insert(((AttributeComposer)(device)).get_priority_for_quality(argin));
 	}
 
 	//===============================================================
@@ -110,15 +110,11 @@ public class ResetClass extends Command implements TangoConst
 	//===============================================================
 	public boolean is_allowed(DeviceImpl device, Any data_in)
 	{
-		if (device.get_state() == DevState.STANDBY)
-		{
 			//	End of Generated Code
 
 			//	Re-Start of Generated Code
-			return false;
-		}
 		return true;
 	}
 }
 //-----------------------------------------------------------------------------
-/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/ResetClass.java,v $ */
+/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetPriorityForQualityClass.java,v $ */
