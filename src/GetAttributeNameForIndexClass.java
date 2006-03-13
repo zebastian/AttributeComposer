@@ -8,7 +8,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.2 $
+// $Revision: 1.3 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -28,7 +28,7 @@
 
 /**
  * @author	$Author: katyho $
- * @version	$Revision: 1.2 $
+ * @version	$Revision: 1.3 $
  */
 package AttributeComposer;
 

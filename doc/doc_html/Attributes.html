@@ -23,12 +23,12 @@
 <Br>
 <center>
 <h1>
-Ds_Composer<Br>
+AttributeComposer<Br>
 Device Attributes Description
 </h1>
 <Br>
 <b>
-Revision: 1.0 - Author: K.Saintin
+Revision: 1.1 - Author: K.Saintin
 </b>
 </center>
 
@@ -45,8 +45,27 @@ Revision: 1.0 - Author: K.Saintin
 <Td><Center><b>Expert</b></td></Center>
 <Tr><Td><b><Center>spectrumResult</b><Br>
 The spectrum is composed by reading the numercial scalar attributes values defined in AttributeNameList property<br>
-If the value is not available the result value will be set to NAN (Not A Number)  </Center></Td>
+If the value is not available the result value will be set to NAN (Not A Number)  <br>
+Call GetAttributeForIndex to know which attribute corresponds to an index of the spectrum )</Center></Td>
 <Td><Center>DEV_DOUBLE</Center></Td><Td><Center>The number of attributes defined in the AttributeNameList property</Center></Td>
+<Td><Center>READ</Center></Td><Td><Center>No</Center></Td></Tr>
+<Tr><Td><b><Center>runningAttributesList</b><Br>
+The spectrum is composed by the list of the running device that defined in AttributeNameList property<br></Center></Td>
+<Td><Center>DEV_STRING</Center></Td><Td><Center>The number of running attributes defined in the AttributeNameList property</Center></Td>
+<Td><Center>READ</Center></Td><Td><Center>No</Center></Td></Tr>
+<Tr><Td><b><Center>unknownAttributesList</b><Br>
+The spectrum is composed by the list of the unknown device that defined in AttributeNameList property<br></Center></Td>
+<Td><Center>DEV_STRING</Center></Td><Td><Center>The number of unknown attributes defined in the AttributeNameList property</Center></Td>
+<Td><Center>READ</Center></Td><Td><Center>No</Center></Td></Tr>
+<Tr><Td><b><Center>attributesQualityList</b><Br>
+The list of the attributes quality in string format.<br>
+Call GetAttributeForIndex to know which attribute corresponds to an index of the spectrum </Center></Td>
+<Td><Center>DEV_STRING</Center></Td><Td><Center>The number of attributes defined in the AttributeNameList property</Center></Td>
+<Td><Center>READ</Center></Td><Td><Center>No</Center></Td></Tr>
+<Tr><Td><b><Center>attributesNumberPriorityList</b><Br>
+The list of the attributes priority list (defined for a tango quality in PriorityList property).<br>
+Call GetAttributeForIndex to know which attribute corresponds to an index of the spectrum )</Center></Td>
+<Td><Center>DEV_SHORT</Center></Td><Td><Center>The number of attributes defined in the AttributeNameList property</Center></Td>
 <Td><Center>READ</Center></Td><Td><Center>No</Center></Td></Tr>
 </Table>
 </Center>

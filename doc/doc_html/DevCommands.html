@@ -28,7 +28,7 @@ Device Commands Description
 </h1>
 <Br>
 <b>
-Revision: 1.0 - Author: K.Saintin
+Revision: 1.1 - Author: K.Saintin
 </b>
 </center>
 
@@ -36,7 +36,6 @@ Revision: 1.0 - Author: K.Saintin
 <Br>
 <Br>
 <Br>
-<A NAME="Init"><!-- --></A>
 <A NAME="Init"><!-- --></A>
 <h2>1 - Init</h2>
 <ul>
@@ -48,11 +47,10 @@ Use this command to relaunch the processing if an attribute is avalaible whereas
 <Li><Strong>Argout:<Br>DEV_VOID</Strong>
  : none.<Br>&nbsp
 <Li><Strong>Command allowed for: </Strong><Ul>
-<Li>Tango::STANDBY<Li>Tango::RUNNING<Li>Tango::ALARM</Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
 <Br>&nbsp
 </ul><Br>
 <Br>
-<A NAME="State"><!-- --></A>
 <A NAME="State"><!-- --></A>
 <h2>2 - State</h2>
 <ul>
@@ -62,11 +60,10 @@ Use this command to relaunch the processing if an attribute is avalaible whereas
 <Li><Strong>Argout:<Br>DEV_STATE</Strong>
  : State Code<Br>&nbsp
 <Li><Strong>Command allowed for: </Strong><Ul>
-<Li>Tango::STANDBY<Li>Tango::RUNNING<Li>Tango::ALARM</Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
 <Br>&nbsp
 </ul><Br>
 <Br>
-<A NAME="Status"><!-- --></A>
 <A NAME="Status"><!-- --></A>
 <h2>3 - Status</h2>
 <ul>
@@ -76,11 +73,10 @@ Use this command to relaunch the processing if an attribute is avalaible whereas
 <Li><Strong>Argout:<Br>CONST_DEV_STRING</Strong>
  : Status descrition<Br>&nbsp
 <Li><Strong>Command allowed for: </Strong><Ul>
-<Li>Tango::STANDBY<Li>Tango::RUNNING<Li>Tango::ALARM</Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
 <Br>&nbsp
 </ul><Br>
 <Br>
-<A NAME="Reset"><!-- --></A>
 <A NAME="Reset"><!-- --></A>
 <h2>4 - Reset</h2>
 <ul>
@@ -90,21 +86,48 @@ Use this command to relaunch the processing if an attribute is avalaible whereas
 <Li><Strong>Argout:<Br>DEV_VOID</Strong>
  : <Br>&nbsp
 <Li><Strong>Command allowed for: </Strong><Ul>
-<Li>Tango::STANDBY<Li>Tango::RUNNING<Li>Tango::ALARM</Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
 <Br>&nbsp
 </ul><Br>
 <Br>
-<A NAME="GetAttributeNameForIndexClass"><!-- --></A>
-<A NAME="GetAttributeNameForIndexClass"><!-- --></A>
-<h2>5 - GetAttributeNameForIndexClass</h2>
+<A NAME="GetAttributeNameForIndex"><!-- --></A>
+<h2>5 - GetAttributeNameForIndex</h2>
 <ul>
 <Li><Strong>Description: </Strong> Get the attributeName associated to the index of a spectrum<Br>&nbsp
 <Li><Strong>Argin:<Br>DEV_SHORT</Strong>
  : The index of the spectrum<Br>&nbsp
 <Li><Strong>Argout:<Br>DEV_STRING</Strong>
- : The name of the corresponding attribute:<Br>&nbsp
+ : The name of the corresponding attribute<Br>&nbsp
 <Li><Strong>Command allowed for: </Strong><Ul>
-<Li>Tango::MOVING<Li>Tango::STANDBY<Li>Tango::FAULT</Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetTangoQualities"><!-- --></A>
+<h2>6 - GetTangoQualities</h2>
+<ul>
+<Li><Strong>Description: </Strong> Get the existing tango qualities<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The name of the existing tango qualities<Br>&nbsp
+ <Li><Strong>Command allowed for: </Strong><Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
+<Br>&nbsp
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetPriorityForQuality"><!-- --></A>
+<h2>7 - GetPriorityForQuality</h2>
+<ul>
+<Li><Strong>Description: </Strong> Get the priority number for a given tango quality<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The tango quality<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The associated priority (defined in PriorityList property)<Br>&nbsp
+ <Li><Strong>Command allowed for: </Strong><Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
+<Br>&nbsp
 <Br>&nbsp
 </ul><Br>
 <Br>

@@ -28,7 +28,7 @@ Device States Description
 </h1>
 <Br>
 <b>
-Revision: 1.0 - Author: K.Saintin
+Revision: 1.1 - Author: K.Saintin
 </b>
 </center>
 
@@ -41,21 +41,22 @@ Revision: 1.0 - Author: K.Saintin
 <TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
 <Td><Center><b>Names</b></td></Center>
 <Td><Center><b>Descriptions</b></td></Center>
-<Tr><Td>STANDBY</Td>
-<Td>The device is ready to start the building process</Td></Tr>
+<Tr><Td>ON</Td>
+<Td>All the attributes are in the quality which the associated priority value is the lower.<br>
+By default VALID</Td></Tr>
 
-<Tr><Td>RUNNING</Td>
-<Td>The device is reading the scalar attributes and building the spectrum</Td></Tr>
+<Tr><Td>MOVING</Td>
+<Td>All the attributes are in the CHANGING quality.<br></Td></Tr>
 
 <Tr><Td>ALARM</Td>
-<Td>
-<Li>One of the attributes is not reachable (device off), in this case associated the index of the spectrum will be set to NAN (Not a Number)
-<Li>One of the attributes is not a numerical scalar type (String, spectrum), in this case the associated index of the spectrum will be set to NAN
-<Li>One of the attributes are in ALARM
+<Td>One of the attribute is in the quality which its priority value is immediately  smaller than the higher value.<br>
+By default ALARM and WARNING
 </Td></Tr>
 
-
-
+<Tr><Td>FAULT</Td>
+<Td>One of the attribute is in the quality which its associated priority value is the highest<br>
+By default INVALID and UNKNOWN
+</Td></Tr>
 
 </Table>
 </Center>

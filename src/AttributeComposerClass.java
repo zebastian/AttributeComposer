@@ -10,7 +10,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.1 $
+// $Revision: 1.2 $
 //
 // $Log: not supported by cvs2svn $
 //

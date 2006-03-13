@@ -12,7 +12,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.1 $
+// $Revision: 1.2 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -59,7 +59,7 @@ import fr.esrf.TangoDs.Util;
  *	This device composed a spectrum attribute from a list of scalar attribute.
  *
  * @author	$Author: katyho $
- * @version	$Revision: 1.1 $
+ * @version	$Revision: 1.2 $
  */
 
 //--------- Start of States Description ----------
@@ -510,7 +510,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		                    value = value + array1[i]  ;                        
                         break;
 		            case TangoConst.Tango_DEV_ULONG:
-                        value = new Long(attr.extractLong()).doubleValue();
+                        value = new Integer(attr.extractLong()).doubleValue();
                         break;
 		            case TangoConst.Tango_DEVVAR_ULONGARRAY:
 		                int[] array2 = attr.extractLongArray();
@@ -519,7 +519,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		                    value = value + array2[i]  ;                        
                         break;
                     case TangoConst.Tango_DEV_LONG:
-                        value = new Long(attr.extractLong()).doubleValue();
+                        value = new Integer(attr.extractLong()).doubleValue();
                         break;
                     case TangoConst.Tango_DEVVAR_LONGARRAY:
 		                int[] array3 = attr.extractLongArray();
