@@ -12,7 +12,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.2 $
+// $Revision: 1.3 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -41,16 +41,21 @@ import org.omg.CORBA.SystemException;
 import org.omg.CORBA.UserException;
 
 import fr.esrf.Tango.AttrQuality;
+import fr.esrf.Tango.AttrWriteType;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.Tango.DevState;
+import fr.esrf.Tango.DispLevel;
 import fr.esrf.TangoApi.AttributeProxy;
 import fr.esrf.TangoApi.DbDatum;
 import fr.esrf.TangoApi.DeviceAttribute;
+import fr.esrf.TangoDs.Attr;
 import fr.esrf.TangoDs.Attribute;
 import fr.esrf.TangoDs.DeviceClass;
 import fr.esrf.TangoDs.DeviceImpl;
 import fr.esrf.TangoDs.Except;
+import fr.esrf.TangoDs.SpectrumAttr;
 import fr.esrf.TangoDs.TangoConst;
+import fr.esrf.TangoDs.UserDefaultAttrProp;
 import fr.esrf.TangoDs.Util;
 
 
@@ -59,7 +64,7 @@ import fr.esrf.TangoDs.Util;
  *	This device composed a spectrum attribute from a list of scalar attribute.
  *
  * @author	$Author: katyho $
- * @version	$Revision: 1.2 $
+ * @version	$Revision: 1.3 $
  */
 
 //--------- Start of States Description ----------
@@ -83,17 +88,24 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 
 	
 	protected double[]	attr_spectrumResult_read = new double[10000];
+	protected short[]	attr_booleanSpectrum_read = new short[10000];
 	protected String[]	attr_runningAttributesList_read = new String[1000];
 	protected String[]	attr_unknownAttributesList_read = new String[1000];
 	protected String[]	attr_attributesQualityList_read = new String[1000];
 	protected short[]	attr_attributesNumberPriorityList_read = new short[1000];
+	protected short		attr_booleanResult= 0;
 
 
 //--------- End of attributes data members ----------
 
 
 	//--------- Start of properties data members ----------
-
+	
+	private static final String NONE = "NONE";
+	private static final String OR = "OR";
+	private static final String AND = "AND";
+	private static final String XOR = "XOR";
+	
 	/**
 	 *	The list of the attribute name, in the order of the spectrum index.
 	 */
@@ -104,6 +116,11 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 	 *	Call GetTangoQualities to know the list of the Tango Quality order.
 	 */
 	short[]	priorityList;
+	
+	/**
+	 *	The list of the attribute name, in the order of the spectrum index.
+	 */
+	String	logicalBoolean = AttributeComposer.NONE;
 
 	//--------- End of properties data members ----------
 
@@ -117,9 +134,11 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 	private Hashtable m_resumQualityTable =  new Hashtable();
 	private Hashtable m_resumpriorityTable = new Hashtable();
 	private Hashtable m_stateQualityTable =  new Hashtable();
+	private Hashtable m_booleanLogical =  new Hashtable();
 	private String[]  stringQualityList;
+	private static final String[] logicalChoices = new String[]{NONE,OR,AND,XOR};
+	private boolean isReading = false;
 	
-
 
 //=========================================================
 /**
@@ -258,6 +277,37 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		        attr_runningAttributesList_read[index] = (String)enum.nextElement();
 		        index++;
 		    }	
+		    
+		    if(!logicalBoolean.equals(NONE))
+		    {
+		        //Create a boolean of spectrum			    
+		        SpectrumAttr attributeSpc = new SpectrumAttr("booleanSpectrum",Tango_DEV_SHORT,10000);
+		        UserDefaultAttrProp	props = new UserDefaultAttrProp();
+		        props.set_label("booleanSpectrum");
+		        props.set_description("Spectrum of boolean value");
+		        attributeSpc.set_default_properties(props);
+		        add_attribute(attributeSpc);
+		        
+		        //Create a boolean scalar attribute	
+		        Attr attribute = new Attr("booleanResult",Tango_DEV_SHORT, AttrWriteType.READ);
+		        
+		        UserDefaultAttrProp	props2 = new UserDefaultAttrProp();
+		        props2.set_label("booleanResult");
+		        props2.set_description("Application of the logical operator " + logicalBoolean + "on booleanSpectrum attribute");
+		        props2.set_format("%1d");
+		        props2.set_min_value("-1");
+		        props2.set_max_value("2");
+		        attribute.set_default_properties(props2);
+		        add_attribute(attribute);
+		        
+		        ActivateAllClass activateClass = new ActivateAllClass("ActivateAll",Tango_DEV_VOID,Tango_DEV_VOID,"","Activate All attributes",DispLevel.OPERATOR);
+                get_device_class().get_command_list().add(activateClass);
+                
+                DeactivateAllClass deactivateClass = new DeactivateAllClass("DeactivateAll",Tango_DEV_VOID,Tango_DEV_VOID,"","Deactivate All attributes",DispLevel.OPERATOR);
+                get_device_class().get_command_list().add(deactivateClass);
+		    }
+		    
+		    
 		    set_state(DevState.RUNNING);
 		    set_status("Device is processing...");
 		}
@@ -310,7 +360,8 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 			return;
 		String[]	propnames = {
 				"AttributeNameList",
-				"PriorityList"
+				"PriorityList",
+				"LogicalBoolean"
 			};
 
 		//	Call database and extract values
@@ -339,6 +390,16 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		{
 		    DbDatum	dev_prop1 = get_db_device().get_property("PriorityList");
 		    dev_prop1.insert(priorityList);
+			get_db_device().put_property(new DbDatum[]{dev_prop1});
+		}
+		
+//		Extract PriorityList value
+		if (!dev_prop[++i].is_empty())
+		    logicalBoolean  = dev_prop[i].extractString();
+		else
+		{
+		    DbDatum	dev_prop1 = get_db_device().get_property("LogicalBoolean");
+		    dev_prop1.insert(logicalBoolean);
 			get_db_device().put_property(new DbDatum[]{dev_prop1});
 		}
 		
@@ -386,6 +447,24 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		get_logger().info("Exiting get_tango_states()");
 		return stringQualityList;
 	}
+
+//	=========================================================
+	/**
+	 *	Execute command "GetLogicalBoolean" on device.
+	 *	This command return the list of the  logical Boolean choices for LogicalBoolean property.
+	 *	Ex : AND,  OR
+	 *
+	 * @return	The list of the choices
+	 */
+//	=========================================================
+	public String[] get_logical_boolean() throws DevFailed
+	{
+		get_logger().info("Entering get_tango_states()");
+
+		// ---Add your Own code to control device here ---
+		get_logger().info("Exiting get_tango_states()");
+		return logicalChoices;
+	}
 //=========================================================
 /**
  *	Method always executed before command execution.
@@ -394,67 +473,78 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 	public void always_executed_hook()
 	{	
 		get_logger().info("In always_executed_hook method()");
-//		Initalisation des devices proxy
-		m_resumQualityTable.clear();
-		m_resumpriorityTable.clear();
-		if(attributeNameList.length > 0)
+		//Initalisation des devices proxy
+		if(!isReading)
 		{
-		    for (int i = 0; i < attributeNameList.length; i++)
-		    {
-		        try
-		        {
-		            AttributeProxy proxy;
-		            if(m_runningAttributeTable.containsKey(attributeNameList[i].trim().toLowerCase()))
-		            {
-		                proxy = (AttributeProxy)m_runningAttributeTable.get(attributeNameList[i].trim().toLowerCase());
-		                DeviceAttribute attr=proxy.read();
-		                AttrQuality attrQualityTmp = attr.getQuality();
-		                attr_attributesNumberPriorityList_read[i]=((Integer)m_priorityTable.get(attrQualityTmp)).shortValue();
-			            attr_attributesQualityList_read[i] = (String)m_qualityTable.get(attrQualityTmp);
-			            if(!m_resumQualityTable.containsKey(attrQualityTmp) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(attrQualityTmp)))
-			                m_resumQualityTable.put(attrQualityTmp,(Integer)m_priorityTable.get(attrQualityTmp));
-		            }
-		        }
-		        catch (DevFailed e)
-                {
-		            attr_attributesNumberPriorityList_read[i]=((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)).shortValue();
-		            attr_attributesQualityList_read[i] = "INVALID";
-		            if(!m_resumQualityTable.containsKey(AttrQuality.ATTR_INVALID) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)))
-		                m_resumQualityTable.put(AttrQuality.ATTR_INVALID,(Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID));
-                }      
-		   }
-		   
-		   if(!m_unknowAttributeTable.isEmpty())
-		   {
-		       if(!m_resumQualityTable.containsKey(AttrQuality.ATTR_INVALID) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)))
-	                m_resumQualityTable.put(AttrQuality.ATTR_INVALID,(Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID));
-		   }
-		       
-		   
-		   if(m_resumQualityTable.size() == 1)
-		   {
-		       AttrQuality attrQuality_tmp = (AttrQuality)m_resumQualityTable.keys().nextElement();
-		       set_state((DevState)m_stateQualityTable.get(attrQuality_tmp));
-			   set_status("All the attributes are in " + (String)m_qualityTable.get(attrQuality_tmp) + " quality.");
-		   }
-		   else
-		   {
-		       Enumeration enum = m_resumQualityTable.keys();
-		       while(enum.hasMoreElements())
-		       {
-		           AttrQuality key =(AttrQuality)enum.nextElement();
-		           Integer value =(Integer)m_resumQualityTable.get(key);
-		           m_resumpriorityTable.put(value,key);
-		       }
-		      
-		       Object[] objList = m_resumQualityTable.values().toArray();
-		       Arrays.sort(objList);
-		       AttrQuality attrQuality_tmp =(AttrQuality) m_resumpriorityTable.get(objList[objList.length - 1]);
-		       DevState state_tmp = (DevState)m_stateQualityTable.get(attrQuality_tmp);
-		       
-		       set_state(state_tmp);
-		       set_status("One of the attribute is in " + (String)m_qualityTable.get(attrQuality_tmp) + " quality.");
-		   } 
+		    isReading = true;
+		    (new Thread()
+			{
+				public void run()
+				{
+				    m_resumQualityTable.clear();
+					m_resumpriorityTable.clear();
+					if(attributeNameList.length > 0)
+					{
+					    for (int i = 0; i < attributeNameList.length; i++)
+					    {
+					        try
+					        {
+					            AttributeProxy proxy;
+					            if(m_runningAttributeTable.containsKey(attributeNameList[i].trim().toLowerCase()))
+					            {
+					                proxy = (AttributeProxy)m_runningAttributeTable.get(attributeNameList[i].trim().toLowerCase());
+					                DeviceAttribute attr=proxy.read();
+					                AttrQuality attrQualityTmp = attr.getQuality();
+					                attr_attributesNumberPriorityList_read[i]=((Integer)m_priorityTable.get(attrQualityTmp)).shortValue();
+						            attr_attributesQualityList_read[i] = (String)m_qualityTable.get(attrQualityTmp);
+						            if(!m_resumQualityTable.containsKey(attrQualityTmp) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(attrQualityTmp)))
+						                m_resumQualityTable.put(attrQualityTmp,(Integer)m_priorityTable.get(attrQualityTmp));
+					            }
+					        }
+					        catch (DevFailed e)
+			                {
+					            attr_attributesNumberPriorityList_read[i]=((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)).shortValue();
+					            attr_attributesQualityList_read[i] = "INVALID";
+					            if(!m_resumQualityTable.containsKey(AttrQuality.ATTR_INVALID) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)))
+					                m_resumQualityTable.put(AttrQuality.ATTR_INVALID,(Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID));
+			                }      
+					   }
+					   
+					   if(!m_unknowAttributeTable.isEmpty())
+					   {
+					       if(!m_resumQualityTable.containsKey(AttrQuality.ATTR_INVALID) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)))
+				                m_resumQualityTable.put(AttrQuality.ATTR_INVALID,(Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID));
+					   }
+					       
+					   
+					   if(m_resumQualityTable.size() == 1)
+					   {
+					       AttrQuality attrQuality_tmp = (AttrQuality)m_resumQualityTable.keys().nextElement();
+					       set_state((DevState)m_stateQualityTable.get(attrQuality_tmp));
+						   set_status("All the attributes are in " + (String)m_qualityTable.get(attrQuality_tmp) + " quality.");
+					   }
+					   else
+					   {
+					       Enumeration enum = m_resumQualityTable.keys();
+					       while(enum.hasMoreElements())
+					       {
+					           AttrQuality key =(AttrQuality)enum.nextElement();
+					           Integer value =(Integer)m_resumQualityTable.get(key);
+					           m_resumpriorityTable.put(value,key);
+					       }
+					      
+					       Object[] objList = m_resumQualityTable.values().toArray();
+					       Arrays.sort(objList);
+					       AttrQuality attrQuality_tmp =(AttrQuality) m_resumpriorityTable.get(objList[objList.length - 1]);
+					       DevState state_tmp = (DevState)m_stateQualityTable.get(attrQuality_tmp);
+					       
+					       set_state(state_tmp);
+					       set_status("One of the attribute is in " + (String)m_qualityTable.get(attrQuality_tmp) + " quality.");
+					   } 
+					}
+					isReading = false;
+				}
+			}).start();
 		}
 	}
 
@@ -473,7 +563,8 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 
 		//	Switch on attribute name
 		//---------------------------------
-		attr_spectrumResult_read = new double[ attributeNameList.length]; 
+		attr_spectrumResult_read = new double[ attributeNameList.length];
+		attr_booleanSpectrum_read = new short[ attributeNameList.length];
 		for(int i = 0 ; i < attributeNameList.length ; i++)
 	    {
 		    if(m_runningAttributeTable.containsKey(attributeNameList[i].trim().toLowerCase()))
@@ -547,16 +638,36 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
                         break;
                     }
 		            attr_spectrumResult_read[i] = value;
+		            short svalue = 1;
+		            if(value == Double.NaN || value != 1)
+		                svalue = 0;
+		            attr_booleanSpectrum_read[i]=svalue;
 		        }
 		        catch (Exception e)
 		        {
 		            e.printStackTrace();
 		            attr_spectrumResult_read[i]= Double.NaN;
+		            attr_booleanSpectrum_read[i]=0;
 		        }
 		    }
 		    else
+		    {
                 attr_spectrumResult_read[i]= Double.NaN;
+		    	attr_booleanSpectrum_read[i]=0;
+		    }
         }
+		
+		//	Add your own code here
+	    m_booleanLogical.clear();
+	    for (int i = 0; i < attr_booleanSpectrum_read.length; i++)
+	    {
+	        Boolean boolVal = new Boolean(false);
+	        if(attr_booleanSpectrum_read[i]==1)
+	            boolVal = new Boolean(true);
+	        m_booleanLogical.put(boolVal,boolVal);
+	        if(m_booleanLogical.size() == 2)
+	            return;
+	    }
 	}
 //===================================================================
 /**
@@ -601,6 +712,42 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 			//	Add your own code here
 		    attr.set_value(attr_attributesNumberPriorityList_read,attr_attributesNumberPriorityList_read.length);
 		}
+		else
+		if (attr_name == "booleanSpectrum")
+		{
+			//	Add your own code here
+		    attr.set_value(attr_booleanSpectrum_read,attr_booleanSpectrum_read.length);
+		}
+		else
+		if (attr_name == "booleanResult")
+		{
+			//	Add your own code here
+		    boolean result = false;
+		    if(m_booleanLogical.size() == 1)
+		    {
+		        if(logicalBoolean.equalsIgnoreCase(XOR))
+		            result = true;
+		        else
+		            result = ((Boolean)m_booleanLogical.keys().nextElement()).booleanValue();
+		    }
+		    
+		    if(m_booleanLogical.size() == 2)
+		    {
+		        if(logicalBoolean.equalsIgnoreCase(XOR))
+		            result = false;
+		        else if(logicalBoolean.equalsIgnoreCase(OR))
+		            result = true;
+		        else
+		            result = false;
+		    }
+		    if(result)
+		        attr_booleanResult=1;
+		    else
+		        attr_booleanResult=0;
+		    
+		    attr.set_value(attr_booleanResult);
+		}
+		
 	}
 
 
@@ -620,7 +767,95 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		init_device();
 		get_logger().info("Exiting reset()");
 	}
+	
+//	=========================================================
+	/**
+	 *	Execute command "SetAllValues" on device.
+	 *
+	 */
+//	=========================================================
+	public void set_all_values(double argin) throws DevFailed
+	{
+		get_logger().info("Entering reset()");
 
+		// ---Add your Own code to control device here ---
+		Enumeration enum = m_runningAttributeTable.elements();
+		while(enum.hasMoreElements())
+	    {
+	        
+            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
+            DeviceAttribute attr = proxy.read();
+            double value = argin;
+            switch (attr.getType())
+            {
+            case TangoConst.Tango_DEV_SHORT:
+                attr.insert(new Double(value).shortValue());
+                break;
+            case TangoConst.Tango_DEV_BOOLEAN:
+                boolean boolVal = false;
+                if(value == 1)
+                    boolVal = true;
+                attr.insert(boolVal);
+            	break; 
+            case TangoConst.Tango_DEV_USHORT:
+                attr.insert(new Double(value).intValue());
+                break;
+            case TangoConst.Tango_DEV_ULONG:
+                attr.insert(new Double(value).intValue());
+                break;
+            case TangoConst.Tango_DEV_LONG:
+                attr.insert(new Double(value).intValue());
+                break;
+            case TangoConst.Tango_DEV_UCHAR:
+                attr.insert(new Double(value).shortValue());
+                break;
+            case TangoConst.Tango_DEV_DOUBLE:
+                attr.insert(value);
+                break;
+     
+            default:
+                value = Double.NaN; 
+                break;
+            }
+            if(value != Double.NaN)
+                proxy.write(attr);
+	    }
+		get_logger().info("Exiting reset()");
+	}
+
+//	=========================================================
+	/**
+	 *	Execute command "Reset" on device.
+	 *	This command allows to take in account the new attribute or removed and restart the processing.
+	 *
+	 */
+//	=========================================================
+	public void activate_all() throws DevFailed
+	{
+		get_logger().info("Entering reset()");
+
+		// ---Add your Own code to control device here ---
+		set_all_values(1);
+		
+		get_logger().info("Exiting reset()");
+	}
+
+//	=========================================================
+	/**
+	 *	Execute command "Reset" on device.
+	 *	This command allows to take in account the new attribute or removed and restart the processing.
+	 *
+	 */
+//	=========================================================
+	public void deactivage_all() throws DevFailed
+	{
+		get_logger().info("Entering reset()");
+
+		// ---Add your Own code to control device here ---
+		set_all_values(0);
+		
+		get_logger().info("Exiting reset()");
+	}
 
 
 //=========================================================

@@ -131,6 +131,63 @@ Use this command to relaunch the processing if an attribute is avalaible whereas
 <Br>&nbsp
 </ul><Br>
 <Br>
+<A NAME="SetAllValues"><!-- --></A>
+<h2>8 - SetAllValues</h2>
+<ul>
+<Li><Strong>Description: </Strong> Set a given value on all the attributes defined in AttributeNameList<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_DOUBLE</Strong>
+ : The set value<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_VOID</Strong>
+<Li><Strong>Command allowed for: </Strong><Ul>
+<br>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
+<Br>&nbsp
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="ActivateAll"><!-- --></A>
+<h2>9 - ActivateAll</h2>
+<ul>
+<Li><Strong>Description: </Strong> Set all attributes defined in AttributeNameList to 1 or true <Br>
+This command is created only if LogicalBoolean property is defined&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_VOID</Strong>
+<Br>&nbsp
+ <Li><Strong>Command allowed for: </Strong><Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
+<Br>&nbsp
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="DeactivateAll"><!-- --></A>
+<h2>10 - DeactivateAll</h2>
+<ul>
+<Li><Strong>Description: </Strong> Set all attributes defined in AttributeNameList to 0 or false <Br>
+This command is created only if LogicalBoolean property is defined&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_VOID</Strong>
+<Br>&nbsp
+ <Li><Strong>Command allowed for: </Strong><Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
+<Br>&nbsp
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetLogicalChoices"><!-- --></A>
+<h2>11 - GetLogicalChoices</h2>
+<ul>
+<Li><Strong>Description: </Strong> Get all the possibilities for LogicalBoolean property<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+<Br>&nbsp
+ <Li><Strong>Command allowed for: </Strong><Ul>
+<Li>Tango::FAULT<Li>Tango::ALARM<Li>Tango::ON</Ul>
+<Br>&nbsp
+<Br>&nbsp
+</ul><Br>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
 <HTML>
 <HEAD>

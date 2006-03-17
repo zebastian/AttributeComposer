@@ -32,7 +32,20 @@ Revision: 1.1 - Author: K.Saintin
 </b>
 </center>
 
-
+<Table Border=2 Cellpadding=3 CELLSPACING=0 WIDTH="100%">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<Td COLSPAN=4> <Font Size=+2><Center><b>Scalar Attributes</b></td></Font></Center>
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<Td><Center><b>Attribute name</b></td></Center>
+<Td><Center><b>Data Type</b></td></Center>
+<Td><Center><b>R/W Type</b></td></Center>
+<Td><Center><b>Expert</b></td></Center>
+<Tr><Td><b><Center>booleanResult</b><Br>
+The application of BooleanLogical property on booleanSpectrum attribute<br>
+This attribute is created only if the LogicalBoolean property is defined.</Center></Td>
+<Td><Center>DEV_SHORT</Center></Td><Td><Center>READ</Center></Td><Td><Center>No</Center></Td></Tr>
+</Table>
+<Br>
 <Br>
 <Table Border=2 Cellpadding=3 CELLSPACING=0 WIDTH="100%">
 <TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
@@ -48,6 +61,12 @@ The spectrum is composed by reading the numercial scalar attributes values defin
 If the value is not available the result value will be set to NAN (Not A Number)  <br>
 Call GetAttributeForIndex to know which attribute corresponds to an index of the spectrum )</Center></Td>
 <Td><Center>DEV_DOUBLE</Center></Td><Td><Center>The number of attributes defined in the AttributeNameList property</Center></Td>
+<Td><Center>READ</Center></Td><Td><Center>No</Center></Td></Tr>
+<Tr><Td><b><Center>booleanSpectrum</b><Br>
+spectrumResult converted in boolean value (0 or 1).<br>
+This attribute is created only if the LogicalBoolean property is defined.<br>
+Call GetAttributeForIndex to know which attribute corresponds to an index of the spectrum )</Center></Td>
+<Td><Center>DEV_SHORT</Center></Td><Td><Center>The number of attributes defined in the AttributeNameList property</Center></Td>
 <Td><Center>READ</Center></Td><Td><Center>No</Center></Td></Tr>
 <Tr><Td><b><Center>runningAttributesList</b><Br>
 The spectrum is composed by the list of the running device that defined in AttributeNameList property<br></Center></Td>

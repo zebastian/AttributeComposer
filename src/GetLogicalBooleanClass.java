@@ -1,5 +1,5 @@
 //+======================================================================
-// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetPriorityForQualityClass.java,v $
+// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetLogicalBooleanClass.java,v $
 //
 // Project:      Tango Device Server
 //
@@ -8,7 +8,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.3 $
+// $Revision: 1.1 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -28,7 +28,7 @@
 
 /**
  * @author	$Author: katyho $
- * @version	$Revision: 1.3 $
+ * @version	$Revision: 1.1 $
  */
 package AttributeComposer;
 
@@ -40,29 +40,30 @@ import fr.esrf.TangoDs.*;
 
 /**
  *	Class Description:
- *	This command return the priority associated to a given State.
+ *	This command return the list of the TANGO states and their associated values.
+ *	Ex : ON = 0,  OFF=1
 */
 
 
-public class GetPriorityForQualityClass extends Command implements TangoConst
+public class GetLogicalBooleanClass extends Command implements TangoConst
 {
 	//===============================================================
 	/**
-	 *	Constructor for Command class GetPriorityForStateClass
+	 *	Constructor for Command class GetTangoStatesClass
 	 *
 	 *	@param	name	command name
 	 *	@param	in	argin type
 	 *	@param	out	argout type
 	 */
 	//===============================================================
-	public GetPriorityForQualityClass(String name,int in,int out)
+	public GetLogicalBooleanClass(String name,int in,int out)
 	{
 		super(name, in, out);
 	}
 
 	//===============================================================
 	/**
-	 *	Constructor for Command class GetPriorityForStateClass
+	 *	Constructor for Command class GetTangoStatesClass
 	 *
 	 *	@param	name            command name
 	 *	@param	in              argin type
@@ -71,13 +72,13 @@ public class GetPriorityForQualityClass extends Command implements TangoConst
 	 *	@param	out_comments    argout description
 	 */
 	//===============================================================
-	public GetPriorityForQualityClass(String name,int in,int out, String in_comments, String out_comments)
+	public GetLogicalBooleanClass(String name,int in,int out, String in_comments, String out_comments)
 	{
 		super(name, in, out, in_comments, out_comments);
 	}
 	//===============================================================
 	/**
-	 *	Constructor for Command class GetPriorityForStateClass
+	 *	Constructor for Command class GetTangoStatesClass
 	 *
 	 *	@param	name            command name
 	 *	@param	in              argin type
@@ -87,7 +88,7 @@ public class GetPriorityForQualityClass extends Command implements TangoConst
 	 *	@param	level           The command display type OPERATOR or EXPERT
 	 */
 	//===============================================================
-	public GetPriorityForQualityClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
+	public GetLogicalBooleanClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
 	{
 		super(name, in, out, in_comments, out_comments, level);
 	}
@@ -98,9 +99,8 @@ public class GetPriorityForQualityClass extends Command implements TangoConst
 	//===============================================================
 	public Any execute(DeviceImpl device,Any in_any) throws DevFailed
 	{
-		Util.out2.println("GetPriorityForQualityClass.execute(): arrived");
-		String argin = extract_DevString(in_any);
-		return insert(((AttributeComposer)(device)).get_priority_for_quality(argin));
+		Util.out2.println("GetTangoQualitiesClass.execute(): arrived");
+		return insert(((AttributeComposer)(device)).get_logical_boolean());
 	}
 
 	//===============================================================
@@ -117,4 +117,4 @@ public class GetPriorityForQualityClass extends Command implements TangoConst
 	}
 }
 //-----------------------------------------------------------------------------
-/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetPriorityForQualityClass.java,v $ */
+/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetLogicalBooleanClass.java,v $ */

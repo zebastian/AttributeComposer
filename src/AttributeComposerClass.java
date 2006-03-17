@@ -10,7 +10,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.2 $
+// $Revision: 1.3 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -148,6 +148,18 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
 				Tango_DEV_STRING, Tango_DEV_SHORT,
 				"The qualities name (ex:VALID, ALARM)",
 				"The priority of the quality",
+				DispLevel.OPERATOR));
+		
+		command_list.addElement(new GetLogicalBooleanClass("GetLogicalChoices",
+				Tango_DEV_VOID, Tango_DEVVAR_STRINGARRAY,
+				"",
+				"The list of the logical choice for LogicalBoolean property",
+				DispLevel.EXPERT));
+		
+		command_list.addElement(new SetAllValuesClass("SetAllValues",
+				Tango_DEV_DOUBLE, Tango_DEV_VOID,
+				"",
+				"Set given value on all the attribute",
 				DispLevel.OPERATOR));
 
 		//	add polling if any
