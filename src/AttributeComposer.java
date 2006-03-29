@@ -12,7 +12,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.4 $
+// $Revision: 1.5 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -64,7 +64,7 @@ import fr.esrf.TangoDs.Util;
  *	This device composed a spectrum attribute from a list of scalar attribute.
  *
  * @author	$Author: katyho $
- * @version	$Revision: 1.4 $
+ * @version	$Revision: 1.5 $
  */
 
 //--------- Start of States Description ----------
@@ -251,7 +251,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 			            DeviceAttribute attr_tmp = (DeviceAttribute)proxy.read();
 			            AttrQuality quality_tmp = attr_tmp.getQuality();
 			            attr_attributesNumberPriorityList_read[i]=((Integer)m_priorityTable.get(quality_tmp)).shortValue();
-			            attr_attributesQualityList_read[i] = (String)m_qualityTable.get(quality_tmp);
+			            attr_attributesQualityList_read[i] = (String)m_qualityTable.get(quality_tmp) + "-" + attributeNameList[i].trim().toLowerCase();
 			            if(!m_resumQualityTable.containsKey(quality_tmp) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(quality_tmp)))
 			                m_resumQualityTable.put(quality_tmp,(Integer)m_priorityTable.get(quality_tmp));
 			        }
@@ -259,7 +259,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 	                {
 			            m_unknowAttributeTable.put(attributeNameList[i].trim().toLowerCase(),"NULL");
 			            attr_attributesNumberPriorityList_read[i]=((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)).shortValue();
-			            attr_attributesQualityList_read[i] = "INVALID";
+			            attr_attributesQualityList_read[i] = "INVALID-" + attributeNameList[i].trim().toLowerCase();
 			            if(!m_resumQualityTable.containsKey(AttrQuality.ATTR_INVALID) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)))
 			                m_resumQualityTable.put(AttrQuality.ATTR_INVALID,(Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID));
 	                }		       
@@ -503,7 +503,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 					                DeviceAttribute attr=proxy.read();
 					                AttrQuality attrQualityTmp = attr.getQuality();
 					                attr_attributesNumberPriorityList_read[i]=((Integer)m_priorityTable.get(attrQualityTmp)).shortValue();
-						            attr_attributesQualityList_read[i] = (String)m_qualityTable.get(attrQualityTmp);
+						            attr_attributesQualityList_read[i] = (String)m_qualityTable.get(attrQualityTmp) + "-" + attributeNameList[i].trim().toLowerCase();
 						            if(!m_resumQualityTable.containsKey(attrQualityTmp) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(attrQualityTmp)))
 						                m_resumQualityTable.put(attrQualityTmp,(Integer)m_priorityTable.get(attrQualityTmp));
 					            }
@@ -511,47 +511,51 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 					        catch (DevFailed e)
 			                {
 					            attr_attributesNumberPriorityList_read[i]=((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)).shortValue();
-					            attr_attributesQualityList_read[i] = "INVALID";
+					            attr_attributesQualityList_read[i] = "INVALID-" + attributeNameList[i].trim().toLowerCase();
 					            if(!m_resumQualityTable.containsKey(AttrQuality.ATTR_INVALID) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)))
 					                m_resumQualityTable.put(AttrQuality.ATTR_INVALID,(Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID));
 			                }      
 					   }
 					   
-					   if(!m_unknowAttributeTable.isEmpty())
+					   try
 					   {
-					       if(!m_resumQualityTable.containsKey(AttrQuality.ATTR_INVALID) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)))
-				                m_resumQualityTable.put(AttrQuality.ATTR_INVALID,(Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID));
+						   if(!m_unknowAttributeTable.isEmpty())
+						   {
+						       if(!m_resumQualityTable.containsKey(AttrQuality.ATTR_INVALID) &&  !m_resumQualityTable.contains((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)))
+					                m_resumQualityTable.put(AttrQuality.ATTR_INVALID,(Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID));
+						   }
+						       
+						   if(m_resumQualityTable.size() == 0)
+						   {
+						       set_state(DevState.UNKNOWN);
+							   set_status("Not initialized yet");
+						   }
+						   else if(m_resumQualityTable.size() == 1)
+						   {
+						       AttrQuality attrQuality_tmp = (AttrQuality)m_resumQualityTable.keys().nextElement();
+						       set_state((DevState)m_stateQualityTable.get(attrQuality_tmp));
+							   set_status("All the attributes are in " + (String)m_qualityTable.get(attrQuality_tmp) + " quality.");
+						   }
+						   else
+						   {
+						       Enumeration enum = m_resumQualityTable.keys();
+						       while(enum.hasMoreElements())
+						       {
+						           AttrQuality key =(AttrQuality)enum.nextElement();
+						           Integer value =(Integer)m_resumQualityTable.get(key);
+						           m_resumpriorityTable.put(value,key);
+						       }
+						      
+						       Object[] objList = m_resumQualityTable.values().toArray();
+						       Arrays.sort(objList);
+						       AttrQuality attrQuality_tmp =(AttrQuality) m_resumpriorityTable.get(objList[objList.length - 1]);
+						       DevState state_tmp = (DevState)m_stateQualityTable.get(attrQuality_tmp);
+						       
+						       set_state(state_tmp);
+						       set_status("One of the attribute is in " + (String)m_qualityTable.get(attrQuality_tmp) + " quality.");
+						   } 
 					   }
-					       
-					   if(m_resumQualityTable.size() == 0)
-					   {
-					       set_state(DevState.UNKNOWN);
-						   set_status("Not initialized yet");
-					   }
-					   else if(m_resumQualityTable.size() == 1)
-					   {
-					       AttrQuality attrQuality_tmp = (AttrQuality)m_resumQualityTable.keys().nextElement();
-					       set_state((DevState)m_stateQualityTable.get(attrQuality_tmp));
-						   set_status("All the attributes are in " + (String)m_qualityTable.get(attrQuality_tmp) + " quality.");
-					   }
-					   else
-					   {
-					       Enumeration enum = m_resumQualityTable.keys();
-					       while(enum.hasMoreElements())
-					       {
-					           AttrQuality key =(AttrQuality)enum.nextElement();
-					           Integer value =(Integer)m_resumQualityTable.get(key);
-					           m_resumpriorityTable.put(value,key);
-					       }
-					      
-					       Object[] objList = m_resumQualityTable.values().toArray();
-					       Arrays.sort(objList);
-					       AttrQuality attrQuality_tmp =(AttrQuality) m_resumpriorityTable.get(objList[objList.length - 1]);
-					       DevState state_tmp = (DevState)m_stateQualityTable.get(attrQuality_tmp);
-					       
-					       set_state(state_tmp);
-					       set_status("One of the attribute is in " + (String)m_qualityTable.get(attrQuality_tmp) + " quality.");
-					   } 
+					   catch (Exception e) {}
 					}
 					isReading = false;
 				}
@@ -656,7 +660,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		        }
 		        catch (Exception e)
 		        {
-		            e.printStackTrace();
+		            //e.printStackTrace();
 		            attr_spectrumResult_read[i]= Double.NaN;
 		            attr_booleanSpectrum_read[i]=0;
 		        }
