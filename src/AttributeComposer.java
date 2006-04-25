@@ -12,7 +12,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.5 $
+// $Revision: 1.6 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -45,6 +45,7 @@ import fr.esrf.Tango.AttrWriteType;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.Tango.DevState;
 import fr.esrf.Tango.DispLevel;
+import fr.esrf.TangoApi.AttributeInfo;
 import fr.esrf.TangoApi.AttributeProxy;
 import fr.esrf.TangoApi.DbDatum;
 import fr.esrf.TangoApi.DeviceAttribute;
@@ -64,7 +65,7 @@ import fr.esrf.TangoDs.Util;
  *	This device composed a spectrum attribute from a list of scalar attribute.
  *
  * @author	$Author: katyho $
- * @version	$Revision: 1.5 $
+ * @version	$Revision: 1.6 $
  */
 
 //--------- Start of States Description ----------
@@ -138,6 +139,8 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 	private String[]  stringQualityList;
 	private static final String[] logicalChoices = new String[]{NONE,OR,AND,XOR};
 	private boolean isReading = false;
+	private double sentValue = 0;
+	private String sentProperty = "";
 	
 
 //=========================================================
@@ -791,53 +794,285 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 //	=========================================================
 	public void set_all_values(double argin) throws DevFailed
 	{
-		get_logger().info("Entering reset()");
-
+		get_logger().info("Entering set_all_values()");
 		// ---Add your Own code to control device here ---
-		Enumeration enum = m_runningAttributeTable.elements();
-		while(enum.hasMoreElements())
-	    {
-	        
-            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
-            DeviceAttribute attr = proxy.read();
-            double value = argin;
-            switch (attr.getType())
-            {
-            case TangoConst.Tango_DEV_SHORT:
-                attr.insert(new Double(value).shortValue());
-                break;
-            case TangoConst.Tango_DEV_BOOLEAN:
-                boolean boolVal = false;
-                if(value == 1)
-                    boolVal = true;
-                attr.insert(boolVal);
-            	break; 
-            case TangoConst.Tango_DEV_USHORT:
-                attr.insert(new Double(value).intValue());
-                break;
-            case TangoConst.Tango_DEV_ULONG:
-                attr.insert(new Double(value).intValue());
-                break;
-            case TangoConst.Tango_DEV_LONG:
-                attr.insert(new Double(value).intValue());
-                break;
-            case TangoConst.Tango_DEV_UCHAR:
-                attr.insert(new Double(value).shortValue());
-                break;
-            case TangoConst.Tango_DEV_DOUBLE:
-                attr.insert(value);
-                break;
-     
-            default:
-                value = Double.NaN; 
-                break;
-            }
-            if(value != Double.NaN)
-                proxy.write(attr);
-	    }
-		get_logger().info("Exiting reset()");
+		sentValue = argin;
+		(new Thread()
+		{
+		     public void run()
+		     {
+		            
+		        Enumeration enum = m_runningAttributeTable.elements();
+				while(enum.hasMoreElements())
+			    {
+			        
+		            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
+		            DeviceAttribute attr =null;
+                    try 
+                    {
+                        attr = proxy.read();
+                        
+                        switch (attr.getType())
+                        {
+			            case TangoConst.Tango_DEV_SHORT:
+			                attr.insert(new Double(sentValue).shortValue());
+			                break;
+			            case TangoConst.Tango_DEV_BOOLEAN:
+			                boolean boolVal = false;
+			                if(sentValue == 1)
+			                    boolVal = true;
+			                attr.insert(boolVal);
+			            	break; 
+			            case TangoConst.Tango_DEV_USHORT:
+			                attr.insert(new Double(sentValue).intValue());
+			                break;
+			            case TangoConst.Tango_DEV_ULONG:
+			                attr.insert(new Double(sentValue).intValue());
+			                break;
+			            case TangoConst.Tango_DEV_LONG:
+			                attr.insert(new Double(sentValue).intValue());
+			                break;
+			            case TangoConst.Tango_DEV_UCHAR:
+			                attr.insert(new Double(sentValue).shortValue());
+			                break;
+			            case TangoConst.Tango_DEV_DOUBLE:
+			                attr.insert(sentValue);
+			                break;
+		     
+			            default:
+			                sentValue = Double.NaN; 
+		                	break;
+                        }
+                        if(sentValue != Double.NaN)
+                            proxy.write(attr);
+                    }
+                    catch (DevFailed e)
+                    {
+                        System.out.println("Cannot write on " + proxy.fullName() + " attribute");
+                    }
+			    }
+		     }
+		}).start();
+		get_logger().info("Exiting set_all_values()");
 	}
-
+	
+//	=========================================================
+	public void set_all_format(String argin)throws DevFailed
+	{
+	    get_logger().info("Entering set_all_format()");
+	    sentProperty = argin;
+	    (new Thread()
+	    {
+    		     public void run()
+    		     {
+    		            
+    		        Enumeration enum = m_runningAttributeTable.elements();
+    				while(enum.hasMoreElements())
+    			    {
+    			        
+    		            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
+    		            
+                        try 
+                        {
+                            AttributeInfo attrInfo = proxy.get_info();
+                            attrInfo.format = sentProperty;
+                            proxy.set_info(new AttributeInfo[]{attrInfo});
+                        }
+                        catch (DevFailed e)
+                        {
+                            System.out.println("Cannot set format property on " + proxy.fullName() + " attribute:\n" + e.getMessage());
+                        }
+    			    }
+    		     }
+    		}).start();
+	    	get_logger().info("Exiting set_all_format()");
+	}
+	//	=========================================================
+	public void set_all_unit(String argin)throws DevFailed
+	{
+	    get_logger().info("Entering set_all_unit()");
+	    sentProperty = argin;
+	    (new Thread()
+	    {
+    		     public void run()
+    		     {
+    		            
+    		        Enumeration enum = m_runningAttributeTable.elements();
+    				while(enum.hasMoreElements())
+    			    {
+    			        
+    		            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
+    		            
+                        try 
+                        {
+                            AttributeInfo attrInfo = proxy.get_info();
+                            attrInfo.unit = sentProperty;
+                            proxy.set_info(new AttributeInfo[]{attrInfo});
+                        }
+                        catch (DevFailed e)
+                        {
+                            System.out.println("Cannot set unit property on " + proxy.fullName() + " attribute:\n" + e.getMessage());
+                        }
+    			    }
+    		     }
+    		}).start();
+	    	get_logger().info("Exiting set_all_unit()");
+	}
+	//	=========================================================
+	public void set_all_min_value(double argin)throws DevFailed
+	{
+	    get_logger().info("Entering set_all_min_value()");
+	    sentProperty = String.valueOf(argin);
+	    
+	    (new Thread()
+	    {
+    		     public void run()
+    		     {
+    		            
+    		        Enumeration enum = m_runningAttributeTable.elements();
+    				while(enum.hasMoreElements())
+    			    {
+    			        
+    		            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
+    		            try 
+                        {
+    		                AttributeInfo attrInfo = proxy.get_info();
+                            attrInfo.min_value = sentProperty;
+                            proxy.set_info(new AttributeInfo[]{attrInfo});
+                        }
+                        catch (DevFailed e)
+                        {
+                            System.out.println("Cannot set min_value property on " + proxy.fullName() + " attribute:\n" + e.getMessage());
+                        }
+    			    }
+    		     }
+    		}).start();
+	    	get_logger().info("Exiting set_all_min_value()");
+	}
+	//	=========================================================
+	public void set_all_max_value(double argin)throws DevFailed
+	{
+	    get_logger().info("Entering set_all_max_value()");
+	    sentProperty = String.valueOf(argin);
+	    (new Thread()
+	    {
+    		     public void run()
+    		     {
+    		            
+    		        Enumeration enum = m_runningAttributeTable.elements();
+    				while(enum.hasMoreElements())
+    			    {
+    			        
+    		            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
+    		            
+                        try 
+                        {
+                            AttributeInfo attrInfo = proxy.get_info();
+                            attrInfo.max_value = sentProperty;
+                            proxy.set_info(new AttributeInfo[]{attrInfo});
+                        }
+                        catch (DevFailed e)
+                        {
+                            System.out.println("Cannot set max_value property on " + proxy.fullName() + " attribute:\n" + e.getMessage());
+                        }
+    			    }
+    		     }
+    		}).start();
+	    	get_logger().info("Exiting set_all_max_value()");
+	}
+	//	=========================================================
+	public void set_all_min_alarm(double argin)throws DevFailed
+	{
+	    get_logger().info("Entering set_all_min_alarm()");
+	    sentProperty = String.valueOf(argin);
+	    (new Thread()
+	    {
+    		     public void run()
+    		     {
+    		            
+    		        Enumeration enum = m_runningAttributeTable.elements();
+    				while(enum.hasMoreElements())
+    			    {
+    			        
+    		            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
+    		            try 
+                        {
+    		                AttributeInfo attrInfo = proxy.get_info();
+                            attrInfo.min_alarm = sentProperty;
+                            proxy.set_info(new AttributeInfo[]{attrInfo});
+                        }
+                        catch (DevFailed e)
+                        {
+                            System.out.println("Cannot set min_alarm property on " + proxy.fullName() + " attribute:\n" + e.getMessage());
+                        }
+    			    }
+    		     }
+    		}).start();
+	    	get_logger().info("Exiting set_all_min_alarm()");
+	}
+	//	=========================================================
+	public void set_all_max_alarm(double argin)throws DevFailed
+	{
+	    get_logger().info("Entering set_all_max_alarm()");
+	    sentProperty = String.valueOf(argin);
+	    (new Thread()
+	    {
+    		     public void run()
+    		     {
+    		            
+    		        Enumeration enum = m_runningAttributeTable.elements();
+    				while(enum.hasMoreElements())
+    			    {
+    			        
+    		            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
+    		            
+                        try 
+                        {
+                            AttributeInfo attrInfo = proxy.get_info();
+                            attrInfo.max_alarm = sentProperty;
+                            proxy.set_info(new AttributeInfo[]{attrInfo});
+                        }
+                        catch (DevFailed e)
+                        {
+                            System.out.println("Cannot set max_alarm property on " + proxy.fullName() + " attribute:\n" + e.getMessage());
+                        }
+    			    }
+    		     }
+    		}).start();
+	    	get_logger().info("Exiting set_all_max_alarm()");
+	}
+	//	=========================================================
+	public void set_all_label(String argin)throws DevFailed
+	{
+	    get_logger().info("Entering set_all_label()");
+	    sentProperty = argin;
+	    (new Thread()
+	    {
+    		     public void run()
+    		     {
+    		            
+    		        Enumeration enum = m_runningAttributeTable.elements();
+    				while(enum.hasMoreElements())
+    			    {
+    			        
+    		            AttributeProxy proxy = (AttributeProxy)enum.nextElement();
+    		            
+                        try 
+                        {
+                            AttributeInfo attrInfo = proxy.get_info();
+                            attrInfo.label = sentProperty;
+                            proxy.set_info(new AttributeInfo[]{attrInfo});                            
+                        }
+                        catch (DevFailed e)
+                        {
+                            System.out.println("Cannot set label property on " + proxy.fullName() + " attribute:\n" + e.getMessage());
+                        }
+    			    }
+    		     }
+    		}).start();
+	    	get_logger().info("Exiting set_all_label()");
+	}
+	
 //	=========================================================
 	/**
 	 *	Execute command "Reset" on device.

@@ -10,7 +10,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.3 $
+// $Revision: 1.4 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -156,11 +156,53 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
 				"The list of the logical choice for LogicalBoolean property",
 				DispLevel.EXPERT));
 		
+		
 		command_list.addElement(new SetAllValuesClass("SetAllValues",
 				Tango_DEV_DOUBLE, Tango_DEV_VOID,
 				"",
 				"Set given value on all the attribute",
 				DispLevel.OPERATOR));
+		
+		command_list.addElement(new SetPropertyClass("SetAllFormat",
+				Tango_DEV_STRING, Tango_DEV_VOID,
+				"The format of all the attribute",
+				"",
+				DispLevel.OPERATOR));
+		
+		command_list.addElement(new SetPropertyClass("SetAllUnit",
+				Tango_DEV_STRING, Tango_DEV_VOID,
+				"The unit of all the attribute",
+				"",
+				DispLevel.OPERATOR));
+		
+		command_list.addElement(new SetPropertyClass("SetAllMinValue",
+				Tango_DEV_DOUBLE, Tango_DEV_VOID,
+				"The unit of all the attribute",
+				"",
+				DispLevel.OPERATOR));
+		command_list.addElement(new SetPropertyClass("SetAllMaxValue",
+				Tango_DEV_DOUBLE, Tango_DEV_VOID,
+				"The unit of all the attribute",
+				"",
+				DispLevel.OPERATOR));
+		command_list.addElement(new SetPropertyClass("SetAllMinAlarm",
+				Tango_DEV_STRING, Tango_DEV_VOID,
+				"The unit of all the attribute",
+				"",
+				DispLevel.OPERATOR));
+		command_list.addElement(new SetPropertyClass("SetAllMaxAlarm",
+				Tango_DEV_STRING, Tango_DEV_VOID,
+				"The unit of all the attribute",
+				"",
+				DispLevel.OPERATOR));
+		command_list.addElement(new SetPropertyClass("SetAllLabel",
+				Tango_DEV_STRING, Tango_DEV_VOID,
+				"The unit of all the attribute",
+				"",
+				DispLevel.OPERATOR));
+		
+		
+		
 
 		//	add polling if any
 		for (int i=0 ; i<command_list.size(); i++)
