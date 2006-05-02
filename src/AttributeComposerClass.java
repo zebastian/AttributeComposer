@@ -10,9 +10,12 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.4 $
+// $Revision: 1.5 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.4  2006/04/25 15:02:49  katyho
+// Update the documentation and Add new functions
+//
 //
 // copyleft :    European Synchrotron Radiation Facility
 //               BP 220, Grenoble 38043
@@ -126,12 +129,6 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
 //===================================================================			
 	public void command_factory()
 	{
-		command_list.addElement(new ResetClass("Reset",
-			Tango_DEV_VOID, Tango_DEV_VOID,
-			"",
-			"",
-			DispLevel.OPERATOR));
-		
 		command_list.addElement(new GetAttributeNameForIndexClass("GetAttributeNameForIndex",
 			Tango_DEV_SHORT, Tango_DEV_STRING,
 			"The index of the spectrum data",

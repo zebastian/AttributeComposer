@@ -12,7 +12,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.6 $
+// $Revision: 1.7 $
 //
 // $Log: not supported by cvs2svn $
 //
@@ -54,7 +54,10 @@ import fr.esrf.TangoDs.Attribute;
 import fr.esrf.TangoDs.DeviceClass;
 import fr.esrf.TangoDs.DeviceImpl;
 import fr.esrf.TangoDs.Except;
+import fr.esrf.TangoDs.InitCmd;
 import fr.esrf.TangoDs.SpectrumAttr;
+import fr.esrf.TangoDs.StateCmd;
+import fr.esrf.TangoDs.StatusCmd;
 import fr.esrf.TangoDs.TangoConst;
 import fr.esrf.TangoDs.UserDefaultAttrProp;
 import fr.esrf.TangoDs.Util;
@@ -65,7 +68,7 @@ import fr.esrf.TangoDs.Util;
  *	This device composed a spectrum attribute from a list of scalar attribute.
  *
  * @author	$Author: katyho $
- * @version	$Revision: 1.6 $
+ * @version	$Revision: 1.7 $
  */
 
 //--------- Start of States Description ----------
@@ -184,6 +187,22 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		//	Initialise variables to default values
 		//-------------------------------------------
 		clearAll();
+		get_device_class().get_command_list().add(new InitCmd("Init",Tango_DEV_VOID,Tango_DEV_VOID));
+		get_device_class().get_command_list().add(new StateCmd("State",Tango_DEV_VOID,Tango_DEV_STATE,"Device state"));
+		get_device_class().get_command_list().add(new StatusCmd("Status",Tango_DEV_VOID,Tango_DEV_STRING,"Device status"));
+		get_device_class().get_command_list().add(new GetAttributeNameForIndexClass("GetAttributeNameForIndex",Tango_DEV_SHORT, Tango_DEV_STRING,"The index of the spectrum data","The attributeName corresponding to the argin index",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new GetTangoQualitiesClass("GetTangoQualities",Tango_DEV_VOID, Tango_DEVVAR_STRINGARRAY,"","The list of the qualities",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new GetPriorityForQualityClass("GetPriorityForQuality",Tango_DEV_STRING, Tango_DEV_SHORT,"The qualities name (ex:VALID, ALARM)","The priority of the quality",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new GetLogicalBooleanClass("GetLogicalChoices",Tango_DEV_VOID, Tango_DEVVAR_STRINGARRAY,"","The list of the logical choice for LogicalBoolean property",DispLevel.OPERATOR));	
+		get_device_class().get_command_list().add(new SetAllValuesClass("SetAllValues",Tango_DEV_DOUBLE, Tango_DEV_VOID,"","Set given value on all the attribute",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new SetPropertyClass("SetAllFormat",Tango_DEV_STRING, Tango_DEV_VOID,"The format of all the attribute","",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new SetPropertyClass("SetAllUnit",Tango_DEV_STRING, Tango_DEV_VOID,"The unit of all the attribute","",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new SetPropertyClass("SetAllMinValue",Tango_DEV_DOUBLE, Tango_DEV_VOID,"The unit of all the attribute","",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new SetPropertyClass("SetAllMaxValue",Tango_DEV_DOUBLE, Tango_DEV_VOID,"The unit of all the attribute","",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new SetPropertyClass("SetAllMinAlarm",Tango_DEV_STRING, Tango_DEV_VOID,"The unit of all the attribute","",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new SetPropertyClass("SetAllMaxAlarm",Tango_DEV_STRING, Tango_DEV_VOID,"The unit of all the attribute","",DispLevel.OPERATOR));
+		get_device_class().get_command_list().add(new SetPropertyClass("SetAllLabel",Tango_DEV_STRING, Tango_DEV_VOID,"The unit of all the attribute","",DispLevel.OPERATOR));
+		
 		set_state(DevState.STANDBY);
 		m_qualityTable.put(AttrQuality.ATTR_VALID,"VALID");
 		m_qualityTable.put(AttrQuality.ATTR_CHANGING,"CHANGING");
@@ -337,6 +356,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		m_resumQualityTable.clear();
 		m_resumpriorityTable.clear();
 		m_stateQualityTable.clear();
+		get_device_class().get_command_list().removeAllElements();
 	}
 	
 	public AttrQuality getQualityForName(String qualitytmp)
@@ -766,24 +786,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst
 		    attr.set_value(attr_booleanResult);
 		}
 		
-	}
-
-
-
-//=========================================================
-/**
- *	Execute command "Reset" on device.
- *	This command allows to take in account the new attribute or removed and restart the processing.
- *
- */
-//=========================================================
-	public void reset() throws DevFailed
-	{
-		get_logger().info("Entering reset()");
-
-		// ---Add your Own code to control device here ---
-		init_device();
-		get_logger().info("Exiting reset()");
 	}
 	
 //	=========================================================
