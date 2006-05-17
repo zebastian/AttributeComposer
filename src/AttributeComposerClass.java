@@ -10,9 +10,12 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.5 $
+// $Revision: 1.6 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.5  2006/05/02 09:54:54  katyho
+// Remove all the command in the clear method
+//
 // Revision 1.4  2006/04/25 15:02:49  katyho
 // Update the documentation and Add new functions
 //
@@ -139,7 +142,7 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
 				Tango_DEV_VOID, Tango_DEVVAR_STRINGARRAY,
 				"",
 				"The list of the qualities",
-				DispLevel.OPERATOR));
+				DispLevel.EXPERT));
 			
 		command_list.addElement(new GetPriorityForQualityClass("GetPriorityForQuality",
 				Tango_DEV_STRING, Tango_DEV_SHORT,
@@ -253,25 +256,7 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
 		spectrum_result_prop.set_label("Spectrum Result");
 		spectrum_result.set_default_properties(spectrum_result_prop);
 		att_list.addElement(spectrum_result);
-		
-//		Attribute : runningAttributesList
-		SpectrumAttr running_attribute_list = 
-			new SpectrumAttr("runningAttributesList", Tango_DEV_STRING, 1000);
-		UserDefaultAttrProp	running_attribute_list_prop = new UserDefaultAttrProp();
-		running_attribute_list_prop.set_label("Running Attributes");
-		running_attribute_list_prop.set_description("The list of the running attributes.");
-		running_attribute_list.set_default_properties(running_attribute_list_prop);
-		att_list.addElement(running_attribute_list);
-
-		//	Attribute : unknownAttributesList
-		SpectrumAttr	unknown_attribute_list = 
-			new SpectrumAttr("unknownAttributesList", Tango_DEV_STRING, 1000);
-		UserDefaultAttrProp	unknown_attribute_list_prop = new UserDefaultAttrProp();
-		unknown_attribute_list_prop.set_label("Unknown Attributes");
-		unknown_attribute_list_prop.set_description("The list of unknown attributes.");
-		unknown_attribute_list.set_default_properties(unknown_attribute_list_prop);
-		att_list.addElement(unknown_attribute_list);
-
+	
 		//	Attribute : attributesQualityList
 		SpectrumAttr	attributes_state_list = 
 			new SpectrumAttr("attributesQualityList", Tango_DEV_STRING, 1000);
