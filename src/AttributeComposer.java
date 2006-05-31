@@ -20,6 +20,7 @@ import fr.esrf.Tango.DevFailed;
 import fr.esrf.Tango.DevState;
 import fr.esrf.Tango.DispLevel;
 import fr.esrf.TangoApi.AttributeInfo;
+import fr.esrf.TangoApi.Database;
 import fr.esrf.TangoApi.DbDatum;
 import fr.esrf.TangoApi.DeviceAttribute;
 import fr.esrf.TangoApi.DeviceProxy;
@@ -66,6 +67,8 @@ private Hashtable m_resumpriorityTable;
 private Hashtable m_stateQualityTable;
 private Hashtable m_booleanLogical;
 private Hashtable m_groupTable;
+private Hashtable m_attributeValueTable;
+private Hashtable m_attributeQualityTable;
 private static final String stringQualityList[] = {
     "VALID", "CHANGING", "WARNING", "ALARM", "INVALID"
 };
@@ -75,8 +78,10 @@ private static final String logicalChoices[] = {
 private double sentValue;
 private String sentProperty;
 private boolean initialized;
-private Thread myStateThread = null;
-private Thread myValueThread = null;
+private Thread myStateReader = null;
+private Thread myValueReader = null;
+private Thread myStateUpdater = null;
+private Thread myValueUpdater = null;
 
 
 
@@ -98,6 +103,8 @@ private Thread myValueThread = null;
      m_stateQualityTable = new Hashtable();
      m_booleanLogical = new Hashtable();
      m_groupTable = new Hashtable();
+     m_attributeValueTable= new Hashtable();
+     m_attributeQualityTable= new Hashtable();
      sentValue = 0.0D;
      sentProperty = "";
      initialized = false;
@@ -121,6 +128,8 @@ private Thread myValueThread = null;
      m_stateQualityTable = new Hashtable();
      m_booleanLogical = new Hashtable();
      m_groupTable = new Hashtable();
+     m_attributeValueTable= new Hashtable();
+     m_attributeQualityTable= new Hashtable();
      sentValue = 0.0D;
      sentProperty = "";
      initialized = false;
@@ -276,8 +285,12 @@ private Thread myValueThread = null;
      m_resumQualityTable.clear();
      m_resumpriorityTable.clear();
      m_stateQualityTable.clear();
-     myStateThread = null;
-    myValueThread = null;
+     m_attributeValueTable.clear();
+     m_attributeQualityTable.clear();
+     myStateReader = null;
+     myValueReader = null;
+     myStateUpdater = null;
+     myValueUpdater = null;
      get_device_class().get_command_list().removeAllElements();
  }
 
@@ -447,20 +460,26 @@ private Thread myValueThread = null;
  {
      get_logger().info("In always_executed_hook method()");
     
-     if(initialized && (myStateThread == null || !myStateThread.isAlive()))
+     if(initialized && (myStateReader == null || !myStateReader.isAlive()))
      {
-         myStateThread = new StateReader();
-         myStateThread.start();
+         myStateReader = new StateReader();
+         myStateReader.start();
+     }
+     
+     if(myStateUpdater == null || !myStateUpdater.isAlive())
+     {
+         myStateUpdater = new StateUpdater();
+         myStateUpdater.start();
      }
   }
 
  public void read_attr_hardware(Vector attr_list)
  {
      get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
-     if(initialized && (myValueThread == null || !myValueThread.isAlive()))
+     if(initialized && (myValueReader == null || !myValueReader.isAlive()))
      {
-         myValueThread = new ValueReader();
-         myValueThread.start();
+         myValueReader = new ValueReader();
+         myValueReader.start();
          m_booleanLogical.clear();
          for(int i = 0; i < attr_booleanSpectrum_read.length; i++)
          {
@@ -472,6 +491,12 @@ private Thread myValueThread = null;
                  return;
          }
 
+     }
+     
+     if(myValueUpdater == null || !myValueUpdater.isAlive())
+     {
+         myValueUpdater = new ValueUpdater();
+         myValueUpdater.start();
      }
  }
 
@@ -937,12 +962,36 @@ private Thread myValueThread = null;
  {
      public void run()
      {
-         m_resumQualityTable.clear();
-         m_resumpriorityTable.clear();
          for(Enumeration enumeration = m_groupTable.keys(); enumeration.hasMoreElements();)
          {
              String attributeName = (String)enumeration.nextElement();
              Group aGroup = (Group)m_groupTable.get(attributeName);
+             
+             int size = aGroup.get_size(true);
+             DeviceProxy proxy = null;
+             DeviceAttribute deviceAttribute  = null;
+             AttrQuality attrQualityTmp = AttrQuality.ATTR_INVALID;
+             for (int i = 0; i <size; i++)
+             {
+                 attrQualityTmp = AttrQuality.ATTR_INVALID;
+                 proxy = aGroup.get_device(i);
+                 if(proxy != null)
+                 {
+                     try
+                     {
+                         deviceAttribute = proxy.read_attribute(attributeName);
+                         attrQualityTmp = deviceAttribute.getQuality();
+                         m_attributeQualityTable.put(proxy.name() + "/" + attributeName,attrQualityTmp);
+                     }
+                     catch(Exception e)
+                     {
+                         e.printStackTrace();
+                     }
+                 }
+             }
+         }
+             
+             /*
              String[] deviList = aGroup.get_device_list(true);
              aGroup.remove_all();
              aGroup.add(deviList);
@@ -959,6 +1008,7 @@ private Thread myValueThread = null;
                  return;
              
              Enumeration enum = resultGroup.elements();
+             
              AttrQuality attrQualityTmp = AttrQuality.ATTR_INVALID;
              while(enum.hasMoreElements()) 
              {
@@ -971,17 +1021,40 @@ private Thread myValueThread = null;
                  {
                      e.printStackTrace();
                  }
-                 int index = get_index_for_attribute(result.dev_name() + "/" + attributeName);
-                 attr_attributesNumberPriorityList_read[index] = ((Integer)m_priorityTable.get(attrQualityTmp)).shortValue();
-                 attr_attributesQualityList_read[index] = (String)m_qualityTable.get(attrQualityTmp) + "-" + attributeNameList[index];
-                 if(!m_resumQualityTable.containsKey(attrQualityTmp) && !m_resumQualityTable.contains((Integer)m_priorityTable.get(attrQualityTmp)))
-                     m_resumQualityTable.put(attrQualityTmp, (Integer)m_priorityTable.get(attrQualityTmp));
+                 m_attributeQualityTable.put(result.dev_name() + "/" + attributeName,attrQualityTmp);
              }
              resultGroup.clear();
              resultGroup = null;
+             */
              System.gc();
-         }
-
+        // }
+       
+     }
+ }
+ 
+ public class StateUpdater extends Thread
+ {
+     public void run()
+     {
+         m_resumQualityTable.clear();
+         m_resumpriorityTable.clear();
+         
+         Enumeration enumeration = m_attributeQualityTable.keys();
+         while (enumeration.hasMoreElements())
+         {
+            String attributeName = (String) enumeration.nextElement();
+            AttrQuality attrQualityTmp = (AttrQuality) m_attributeQualityTable.get(attributeName);
+            int index = get_index_for_attribute(attributeName);
+            if(index != -1)
+            {
+                attr_attributesNumberPriorityList_read[index] = ((Integer)m_priorityTable.get(attrQualityTmp)).shortValue();
+                attr_attributesQualityList_read[index] = (String)m_qualityTable.get(attrQualityTmp) + "-" + attributeNameList[index];
+                if(!m_resumQualityTable.containsKey(attrQualityTmp) && !m_resumQualityTable.contains((Integer)m_priorityTable.get(attrQualityTmp)))
+                    m_resumQualityTable.put(attrQualityTmp, (Integer)m_priorityTable.get(attrQualityTmp));
+            }
+            
+        }
+         
          try
          {
              if(m_resumQualityTable.size() == 0)
@@ -1019,13 +1092,126 @@ private Thread myValueThread = null;
  
  public class ValueReader extends Thread
  {
-     
      public void run()
      {
          for(Enumeration enumeration = m_groupTable.keys(); enumeration.hasMoreElements();)
          {
              String attributeName = (String)enumeration.nextElement();
              Group aGroup = (Group)m_groupTable.get(attributeName);
+             
+             int size = aGroup.get_size(true);
+             DeviceProxy proxy = null;
+             DeviceAttribute attr  = null;
+             for (int i = 0; i <size; i++)
+             {
+                 proxy = aGroup.get_device(i);
+                 if(proxy != null)
+                 {
+                     try
+                     {
+                         attr = proxy.read_attribute(attributeName);
+                         double value = 0.0D;
+                         switch(attr.getType())
+                         {
+                         case 2: // '\002'
+                             value = (new Short(attr.extractShort())).doubleValue();
+                             break;
+
+                         case 10: // '\n'
+                             short array[] = attr.extractShortArray();
+                             value = 0.0D;
+                             for(int j = 0; j < array.length; j++)
+                                 value += array[j];
+
+                             break;
+
+                         case 1: // '\001'
+                             if(attr.extractBoolean())
+                                 value = 1.0D;
+                             else
+                                 value = 0.0D;
+                             break;
+
+                         case 6: // '\006'
+                             value = (new Integer(attr.extractUShort())).doubleValue();
+                             break;
+
+                         case 14: // '\016'
+                             int array1[] = attr.extractUShortArray();
+                             value = 0.0D;
+                             for(int j = 0; j < array1.length; j++)
+                                 value += array1[j];
+
+                             break;
+
+                         case 7: // '\007'
+                             value = (new Integer(attr.extractLong())).doubleValue();
+                             break;
+
+                         case 15: // '\017'
+                             int array2[] = attr.extractLongArray();
+                             value = 0.0D;
+                             for(int j = 0; j < array2.length; j++)
+                                 value += array2[j];
+
+                             break;
+
+                         case 3: // '\003'
+                             value = (new Integer(attr.extractLong())).doubleValue();
+                             break;
+
+                         case 11: // '\013'
+                             int array3[] = attr.extractLongArray();
+                             value = 0.0D;
+                             for(int j = 0; j < array3.length; j++)
+                                 value += array3[j];
+
+                             break;
+
+                         case 22: // '\026'
+                             value = (new Short(attr.extractUChar())).doubleValue();
+                             break;
+
+                         case 19: // '\023'
+                             value = (new Integer(attr.extractState().value())).doubleValue();
+                             break;
+
+                         case 5: // '\005'
+                             value = attr.extractDouble();
+                             break;
+
+                         case 13: // '\r'
+                             double array4[] = attr.extractDoubleArray();
+                             value = 0.0D;
+                             for(int j = 0; j < array4.length; j++)
+                                 value += array4[j];
+
+                             break;
+
+                         case 4: // '\004'
+                         case 8: // '\b'
+                         case 9: // '\t'
+                         case 12: // '\f'
+                         case 16: // '\020'
+                         case 17: // '\021'
+                         case 18: // '\022'
+                         case 20: // '\024'
+                         case 21: // '\025'
+                         default:
+                             value = (0.0D / 0.0D);
+                             break;
+                         }
+                         m_attributeValueTable.put(proxy.name() + "/" + attributeName,new Double(value));
+                     }
+                     catch(Exception e)
+                     {
+                         e.printStackTrace();
+                     }
+                 }
+             }
+         }
+             
+             /*
              String[] deviList = aGroup.get_device_list(true);
              aGroup.remove_all();
              aGroup.add(deviList);
@@ -1046,7 +1232,6 @@ private Thread myValueThread = null;
                  try
                  {
                      attr = result.get_data();
-                     int index = get_index_for_attribute(result.dev_name() + "/" + attributeName);
                      double value = 0.0D;
                      switch(attr.getType())
                      {
@@ -1138,35 +1323,67 @@ private Thread myValueThread = null;
                          value = (0.0D / 0.0D);
                          break;
                      }
-                     attr_spectrumResult_read[index] = value;
-                     short svalue = 1;
-                     if(value == (0.0D / 0.0D) || value != 1.0D)
-                         svalue = 0;
-                     attr_booleanSpectrum_read[index] = svalue;
+                     
+                     m_attributeValueTable.put(result.dev_name() + "/" + attributeName, new Double(value));
                  }
                  catch(Exception exception) { }
              }
              resultGroup.clear();
              resultGroup = null;
              System.gc();
+         }*/
+         
+     }
+ }
+ 
+ public class ValueUpdater extends Thread
+ {
+     
+     public void run()
+     {
+         Enumeration enumeration = m_attributeValueTable.keys();
+         while (enumeration.hasMoreElements()) {
+            String attributeName = (String) enumeration.nextElement();
+            double value = ((Double)m_attributeValueTable.get(attributeName)).doubleValue();
+            int index = get_index_for_attribute(attributeName);
+            attr_spectrumResult_read[index] = value;
+            short svalue = 1;
+            if(value == (0.0D / 0.0D) || value != 1.0D)
+                svalue = 0;
+            attr_booleanSpectrum_read[index] = svalue;
+        }
+         
+         m_booleanLogical.clear();
+         for(int i = 0; i < attr_booleanSpectrum_read.length; i++)
+         {
+             Boolean boolVal = new Boolean(false);
+             if(attr_booleanSpectrum_read[i] == 1)
+                 boolVal = new Boolean(true);
+             m_booleanLogical.put(boolVal, boolVal);
+             if(m_booleanLogical.size() == 2)
+                 return;
          }
-
      }
  }
  
  public static void main(String argv[])
  {
+     System.out.println("ATTRIBUTECOMPOSER VERSION 1.0.7 NO GROUP");
+     
+     try
+	 {
+	    //Unexport the server before
+	    if(argv != null && argv.length > 0)
+	    {
+	        new Database().unexport_server("attributecomposer/" + argv[0]);
+	    }
+	 }
+     catch(Exception e){}
+     
      try
      {
+         
          Util tg = Util.init(argv, "AttributeComposer");
-         try
-		 {
-		    //Unexport the server before.
-		    if(argv != null && argv.length > 0)
-		        tg.get_database().unexport_server("attributecomposer/" + argv[0]);
-		 }
-		 catch(Exception e){}
-			
          tg.server_init();
          System.out.println("Ready to accept request");
          tg.server_run();
