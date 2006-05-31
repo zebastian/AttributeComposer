@@ -3,8 +3,6 @@
 //Decompiler options: packimports(3) 
 //Source File Name:   AttributeComposer.java
 
-package AttributeComposer;
-
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -25,8 +23,6 @@ import fr.esrf.TangoApi.DbDatum;
 import fr.esrf.TangoApi.DeviceAttribute;
 import fr.esrf.TangoApi.DeviceProxy;
 import fr.esrf.TangoApi.Group.Group;
-import fr.esrf.TangoApi.Group.GroupAttrReply;
-import fr.esrf.TangoApi.Group.GroupAttrReplyList;
 import fr.esrf.TangoDs.Attr;
 import fr.esrf.TangoDs.Attribute;
 import fr.esrf.TangoDs.DeviceClass;
@@ -75,13 +71,13 @@ private static final String stringQualityList[] = {
 private static final String logicalChoices[] = {
     "NONE", "OR", "AND", "XOR"
 };
-private double sentValue;
 private String sentProperty;
 private boolean initialized;
 private Thread myStateReader = null;
 private Thread myValueReader = null;
 private Thread myStateUpdater = null;
 private Thread myValueUpdater = null;
+private Thread myValueWriter = null;
 
 
 
@@ -105,7 +101,6 @@ private Thread myValueUpdater = null;
      m_groupTable = new Hashtable();
      m_attributeValueTable= new Hashtable();
      m_attributeQualityTable= new Hashtable();
-     sentValue = 0.0D;
      sentProperty = "";
      initialized = false;
      init_device();
@@ -130,7 +125,6 @@ private Thread myValueUpdater = null;
      m_groupTable = new Hashtable();
      m_attributeValueTable= new Hashtable();
      m_attributeQualityTable= new Hashtable();
-     sentValue = 0.0D;
      sentProperty = "";
      initialized = false;
      init_device();
@@ -291,6 +285,7 @@ private Thread myValueUpdater = null;
      myValueReader = null;
      myStateUpdater = null;
      myValueUpdater = null;
+     myValueWriter = null;
      get_device_class().get_command_list().removeAllElements();
  }
 
@@ -480,17 +475,6 @@ private Thread myValueUpdater = null;
      {
          myValueReader = new ValueReader();
          myValueReader.start();
-         m_booleanLogical.clear();
-         for(int i = 0; i < attr_booleanSpectrum_read.length; i++)
-         {
-             Boolean boolVal = new Boolean(false);
-             if(attr_booleanSpectrum_read[i] == 1)
-                 boolVal = new Boolean(true);
-             m_booleanLogical.put(boolVal, boolVal);
-             if(m_booleanLogical.size() == 2)
-                 return;
-         }
-
      }
      
      if(myValueUpdater == null || !myValueUpdater.isAlive())
@@ -547,82 +531,13 @@ private Thread myValueUpdater = null;
      throws DevFailed
  {
      get_logger().info("Entering set_all_values()");
-     sentValue = argin;
-     (new Thread() {
-
-         public void run()
-         {
-             Enumeration enumeration = m_groupTable.keys();
-             String attributeName;
-             for(DeviceAttribute attr = null; enumeration.hasMoreElements(); attr = new DeviceAttribute(attributeName))
-             {
-                 attributeName = (String)enumeration.nextElement();
-                 Group aGroup = (Group)m_groupTable.get(attributeName);
-                 try
-                 {
-                     GroupAttrReplyList resultGroup = aGroup.read_attribute(attributeName, true);
-                     for(Enumeration enum = resultGroup.elements(); enum.hasMoreElements();)
-                     {
-                         GroupAttrReply result = (GroupAttrReply)enum.nextElement();
-                         try
-                         {
-                             attr = result.get_data();
-                             switch(attr.getType())
-                             {
-                             case 2: // '\002'
-                                 attr.insert((new Double(sentValue)).shortValue());
-                                 break;
-
-                             case 1: // '\001'
-                                 boolean boolVal = false;
-                                 if(sentValue == 1.0D)
-                                     boolVal = true;
-                                 attr.insert(boolVal);
-                                 break;
-
-                             case 6: // '\006'
-                                 attr.insert((new Double(sentValue)).intValue());
-                                 break;
-
-                             case 7: // '\007'
-                                 attr.insert((new Double(sentValue)).intValue());
-                                 break;
-
-                             case 3: // '\003'
-                                 attr.insert((new Double(sentValue)).intValue());
-                                 break;
-
-                             case 22: // '\026'
-                                 attr.insert((new Double(sentValue)).shortValue());
-                                 break;
-
-                             case 5: // '\005'
-                                 attr.insert(sentValue);
-                                 break;
-
-                             default:
-                                 sentValue = (0.0D / 0.0D);
-                                 break;
-                             }
-                             if(sentValue != (0.0D / 0.0D))
-                                 aGroup.write_attribute(attr, true);
-                         }
-                         catch(DevFailed e)
-                         {
-                             System.out.println("Cannot write on " + attributeName + " attribute");
-                         }
-                     }
-
-                 }
-                 catch(DevFailed e)
-                 {
-                     e.printStackTrace();
-                 }
-             }
-
-         }
-
-     }).start();
+     
+     if(myValueWriter == null || !myValueWriter.isAlive())
+     {
+         myValueWriter = new ValueWriter(argin);
+         myValueWriter.start();
+     }
+ 
      get_logger().info("Exiting set_all_values()");
  }
 
@@ -641,7 +556,7 @@ private Thread myValueUpdater = null;
                  Group aGroup = (Group)m_groupTable.get(attributeName);
                  try
                  {
-                     for(int i = 0; i < aGroup.get_size(true); i++)
+                     for(int i = 0; i <= aGroup.get_size(true); i++)
                      {
                          DeviceProxy proxy = aGroup.get_device(i);
                          if(proxy != null)
@@ -684,7 +599,7 @@ private Thread myValueUpdater = null;
                  Group aGroup = (Group)m_groupTable.get(attributeName);
                  try
                  {
-                     for(int i = 0; i < aGroup.get_size(true); i++)
+                     for(int i = 0; i <= aGroup.get_size(true); i++)
                      {
                          DeviceProxy proxy = aGroup.get_device(i);
                          if(proxy != null)
@@ -727,7 +642,7 @@ private Thread myValueUpdater = null;
                  Group aGroup = (Group)m_groupTable.get(attributeName);
                  try
                  {
-                     for(int i = 0; i < aGroup.get_size(true); i++)
+                     for(int i = 0; i <= aGroup.get_size(true); i++)
                      {
                          DeviceProxy proxy = aGroup.get_device(i);
                          if(proxy != null)
@@ -770,7 +685,7 @@ private Thread myValueUpdater = null;
                  Group aGroup = (Group)m_groupTable.get(attributeName);
                  try
                  {
-                     for(int i = 0; i < aGroup.get_size(true); i++)
+                     for(int i = 0; i <= aGroup.get_size(true); i++)
                      {
                          DeviceProxy proxy = aGroup.get_device(i);
                          if(proxy != null)
@@ -813,7 +728,7 @@ private Thread myValueUpdater = null;
                  Group aGroup = (Group)m_groupTable.get(attributeName);
                  try
                  {
-                     for(int i = 0; i < aGroup.get_size(true); i++)
+                     for(int i = 0; i <= aGroup.get_size(true); i++)
                      {
                          DeviceProxy proxy = aGroup.get_device(i);
                          if(proxy != null)
@@ -856,7 +771,7 @@ private Thread myValueUpdater = null;
                  Group aGroup = (Group)m_groupTable.get(attributeName);
                  try
                  {
-                     for(int i = 0; i < aGroup.get_size(true); i++)
+                     for(int i = 0; i <= aGroup.get_size(true); i++)
                      {
                          DeviceProxy proxy = aGroup.get_device(i);
                          if(proxy != null)
@@ -899,7 +814,7 @@ private Thread myValueUpdater = null;
                  Group aGroup = (Group)m_groupTable.get(attributeName);
                  try
                  {
-                     for(int i = 0; i < aGroup.get_size(true); i++)
+                     for(int i = 0; i <= aGroup.get_size(true); i++)
                      {
                          DeviceProxy proxy = aGroup.get_device(i);
                          if(proxy != null)
@@ -968,16 +883,17 @@ private Thread myValueUpdater = null;
              Group aGroup = (Group)m_groupTable.get(attributeName);
              
              int size = aGroup.get_size(true);
+             //System.out.println("Proxy number=" + size);
              DeviceProxy proxy = null;
              DeviceAttribute deviceAttribute  = null;
              AttrQuality attrQualityTmp = AttrQuality.ATTR_INVALID;
-             for (int i = 0; i <size; i++)
+             for (int i = 0; i <= size; i++)
              {
                  attrQualityTmp = AttrQuality.ATTR_INVALID;
                  proxy = aGroup.get_device(i);
                  if(proxy != null)
                  {
-                     try
+                 	try
                      {
                          deviceAttribute = proxy.read_attribute(attributeName);
                          attrQualityTmp = deviceAttribute.getQuality();
@@ -1102,7 +1018,7 @@ private Thread myValueUpdater = null;
              int size = aGroup.get_size(true);
              DeviceProxy proxy = null;
              DeviceAttribute attr  = null;
-             for (int i = 0; i <size; i++)
+             for (int i = 0; i <= size; i++)
              {
                  proxy = aGroup.get_device(i);
                  if(proxy != null)
@@ -1336,6 +1252,150 @@ private Thread myValueUpdater = null;
      }
  }
  
+ public class ValueWriter extends Thread
+ {
+ 	 private double sentValue = Double.NaN;
+ 	ValueWriter(double asendValue){
+         super();        
+         sentValue=asendValue;
+     }
+     
+ 	 public void run()
+     {
+         for(Enumeration enumeration = m_groupTable.keys(); enumeration.hasMoreElements();)
+         {
+             String attributeName = (String)enumeration.nextElement();
+             Group aGroup = (Group)m_groupTable.get(attributeName);
+             
+             int size = aGroup.get_size(true);
+             DeviceProxy proxy = null;
+             DeviceAttribute attr  = null;
+             for (int i = 0; i <= size; i++)
+             {
+                 proxy = aGroup.get_device(i);
+                 if(proxy != null)
+                 {
+                     try
+                     {
+                         attr = proxy.read_attribute(attributeName);
+                         double value = 0.0D;
+                         switch(attr.getType())
+                         {
+                         case 2: // '\002'
+                            attr.insert((new Double(sentValue)).shortValue());
+                            break;
+
+                        case 1: // '\001'
+                            boolean boolVal = false;
+                            if(sentValue == 1.0D)
+                                boolVal = true;
+                            attr.insert(boolVal);
+                            break;
+
+                        case 6: // '\006'
+                            attr.insert((new Double(sentValue)).intValue());
+                            break;
+
+                        case 7: // '\007'
+                            attr.insert((new Double(sentValue)).intValue());
+                            break;
+
+                        case 3: // '\003'
+                            attr.insert((new Double(sentValue)).intValue());
+                            break;
+
+                        case 22: // '\026'
+                            attr.insert((new Double(sentValue)).shortValue());
+                            break;
+
+                        case 5: // '\005'
+                            attr.insert(sentValue);
+                            break;
+                         
+                         default:
+                            return;
+                         }
+                         proxy.write_attribute(attr);
+                     }
+                     catch(Exception e)
+                     {
+                         e.printStackTrace();
+                     }
+                 }
+             }
+         }
+             
+             /*
+                          Enumeration enumeration = m_groupTable.keys();
+             String attributeName;
+             for(DeviceAttribute attr = null; enumeration.hasMoreElements(); attr = new DeviceAttribute(attributeName))
+             {
+                 attributeName = (String)enumeration.nextElement();
+                 Group aGroup = (Group)m_groupTable.get(attributeName);
+                 try
+                 {
+                     GroupAttrReplyList resultGroup = aGroup.read_attribute(attributeName, true);
+                     for(Enumeration enum = resultGroup.elements(); enum.hasMoreElements();)
+                     {
+                         GroupAttrReply result = (GroupAttrReply)enum.nextElement();
+                         try
+                         {
+                             attr = result.get_data();
+                             switch(attr.getType())
+                             {
+                             case 2: // '\002'
+                                 attr.insert((new Double(sentValue)).shortValue());
+                                 break;
+
+                             case 1: // '\001'
+                                 boolean boolVal = false;
+                                 if(sentValue == 1.0D)
+                                     boolVal = true;
+                                 attr.insert(boolVal);
+                                 break;
+
+                             case 6: // '\006'
+                                 attr.insert((new Double(sentValue)).intValue());
+                                 break;
+
+                             case 7: // '\007'
+                                 attr.insert((new Double(sentValue)).intValue());
+                                 break;
+
+                             case 3: // '\003'
+                                 attr.insert((new Double(sentValue)).intValue());
+                                 break;
+
+                             case 22: // '\026'
+                                 attr.insert((new Double(sentValue)).shortValue());
+                                 break;
+
+                             case 5: // '\005'
+                                 attr.insert(sentValue);
+                                 break;
+
+                             default:
+                                 sentValue = (0.0D / 0.0D);
+                                 break;
+                             }
+                             if(sentValue != (0.0D / 0.0D))
+                                 aGroup.write_attribute(attr, true);
+                         }
+                         catch(DevFailed e)
+                         {
+                             System.out.println("Cannot write on " + attributeName + " attribute");
+                         }
+                     }
+
+                 }
+                 catch(DevFailed e)
+                 {
+                     e.printStackTrace();
+                 }
+             }*/
+     }
+ }
+ 
  public class ValueUpdater extends Thread
  {
      
@@ -1368,7 +1428,7 @@ private Thread myValueUpdater = null;
  
  public static void main(String argv[])
  {
-     System.out.println("ATTRIBUTECOMPOSER VERSION 1.0.7 NO GROUP");
+     System.out.println("ATTRIBUTECOMPOSER VERSION 1.0.8 NO GROUP");
      
      try
 	 {
