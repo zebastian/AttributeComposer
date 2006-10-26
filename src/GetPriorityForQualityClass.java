@@ -8,9 +8,12 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.3 $
+// $Revision: 1.4 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.3  2006/03/17 16:21:33  katyho
+// add new Command
+//
 //
 // copyleft :    European Synchrotron Radiation Facility
 //               BP 220, Grenoble 38043
@@ -28,7 +31,7 @@
 
 /**
  * @author	$Author: katyho $
- * @version	$Revision: 1.3 $
+ * @version	$Revision: 1.4 $
  */
 package AttributeComposer;
 
