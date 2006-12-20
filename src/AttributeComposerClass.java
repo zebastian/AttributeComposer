@@ -10,7 +10,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.9 $
+// $Revision: 1.10 $
 //
 // $Log: not supported by cvs2svn $
 // Revision 1.5  2006/05/02 09:54:54  katyho
@@ -36,9 +36,11 @@ package AttributeComposer;
 
 import java.util.Vector;
 
+import fr.esrf.Tango.AttrWriteType;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.Tango.DispLevel;
 import fr.esrf.TangoApi.DbDatum;
+import fr.esrf.TangoDs.Attr;
 import fr.esrf.TangoDs.DeviceClass;
 import fr.esrf.TangoDs.DeviceImpl;
 import fr.esrf.TangoDs.SpectrumAttr;
@@ -201,9 +203,18 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
 				"",
 				DispLevel.OPERATOR));
 		
+        command_list.addElement(new ActivateAllClass("ActivateAll",
+                Tango_DEV_VOID, Tango_DEV_VOID,
+                "",
+                "Activate All attributes send 1 or true",
+                DispLevel.OPERATOR));
+        
+        command_list.addElement(new DeactivateAllClass("DeactivateAll",
+                Tango_DEV_VOID, Tango_DEV_VOID,
+                "",
+                "Deactivate All attributes send 0 or false",
+                DispLevel.OPERATOR));
 		
-		
-
 		//	add polling if any
 		for (int i=0 ; i<command_list.size(); i++)
 		{
@@ -267,13 +278,50 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
 		att_list.addElement(attributes_state_list);
 
 		//	Attribute : attributesNumberPriorityList
-		SpectrumAttr	attributes_number_priority_list = 
-			new SpectrumAttr("attributesNumberPriorityList", Tango_DEV_SHORT, 1000);
+		SpectrumAttr	attributes_number_priority_list = new SpectrumAttr("attributesNumberPriorityList", Tango_DEV_SHORT, 1000);
 		UserDefaultAttrProp	attributes_number_priority_list_prop = new UserDefaultAttrProp();
 		attributes_number_priority_list_prop.set_label("Attributes Priority");
 		attributes_number_priority_list_prop.set_description("The list of the attributes quality in priority number format.\nCall GetAttributeNameForIndex to know which attributes corresponds to an index of the spectrum.\nCall GetPriorityForQuality to know the values of tango qualities.");
 		attributes_number_priority_list.set_default_properties(attributes_number_priority_list_prop);
 		att_list.addElement(attributes_number_priority_list);
+        
+        
+        SpectrumAttr attribute_boolean_spectrum = new SpectrumAttr("booleanSpectrum", Tango_DEV_SHORT, 10000);
+        UserDefaultAttrProp attribute_boolean_spectrum_prop = new UserDefaultAttrProp();
+        attribute_boolean_spectrum_prop.set_label("booleanSpectrum");
+        attribute_boolean_spectrum_prop.set_description("Spectrum of boolean value");
+        attribute_boolean_spectrum.set_default_properties(attribute_boolean_spectrum_prop);
+        att_list.addElement(attribute_boolean_spectrum);
+        
+        Attr attribute_boolean_result = new Attr("booleanResult", Tango_DEV_BOOLEAN, AttrWriteType.READ);
+        UserDefaultAttrProp attribute_boolean_result_prop = new UserDefaultAttrProp();
+        attribute_boolean_result_prop.set_label("booleanResult");
+        attribute_boolean_result_prop.set_description("Application of the logical gate LogicalBoolean gates on booleanSpectrum attribute");
+        attribute_boolean_result.set_default_properties(attribute_boolean_result_prop);
+        att_list.addElement(attribute_boolean_result);
+        
+        SpectrumAttr attribute_attributes_result_report = new SpectrumAttr("attributesResultReport", Tango_DEV_STRING, 10000);
+        UserDefaultAttrProp attribute_attributes_result_report_prop = new UserDefaultAttrProp();
+        attribute_attributes_result_report_prop.set_label("attributesResultReport");
+        attribute_attributes_result_report_prop.set_description("The result of the writing and reading instruction");
+        attribute_attributes_result_report.set_default_properties(attribute_attributes_result_report_prop);
+        att_list.addElement(attribute_attributes_result_report);
+        
+        //Attribute : State
+        Attr  state_attribute = new Attr("State", Tango_DEV_STRING,AttrWriteType.READ);
+        UserDefaultAttrProp state_attribute_prop = new UserDefaultAttrProp();
+        state_attribute_prop.set_label("State");
+        state_attribute_prop.set_description("The state of the device");
+        state_attribute.set_default_properties(state_attribute_prop);
+        att_list.addElement(state_attribute);
+        
+        //Attribute : Status
+        Attr  status_attribute = new Attr("Status", Tango_DEV_STRING,AttrWriteType.READ);
+        UserDefaultAttrProp status_attribute_prop = new UserDefaultAttrProp();
+        status_attribute_prop.set_label("Status");
+        status_attribute_prop.set_description("The status of the device");
+        status_attribute.set_default_properties(status_attribute_prop);
+        att_list.addElement(status_attribute);
 
 	}
 
