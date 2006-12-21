@@ -12,7 +12,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.13 $
+// $Revision: 1.14 $
 //
 // $Log: not supported by cvs2svn $
 // Revision 1.7  2006/05/02 09:56:14  katyho
@@ -281,6 +281,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      m_attributeValueTable.clear();
      m_attributeQualityTable.clear();
      m_attributeGroupTable.clear();
+     m_attributeResultReportTable.clear();
      m_QualityReader = null;
      m_ValueReader = null;
      m_StateUpdater = null;
