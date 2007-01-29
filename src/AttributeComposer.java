@@ -10,11 +10,14 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: katyho $
+// $Author: ounsy $
 //
-// $Revision: 1.14 $
+// $Revision: 1.14.2.1 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.14  2006/12/21 11:45:44  katyho
+// Clear all the tables
+//
 // Revision 1.7  2006/05/02 09:56:14  katyho
 // Remove all the command in the clear Method
 //
@@ -83,7 +86,8 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     protected String attr_attributesResultReport_read[] = new String[10000];
     protected boolean attr_booleanResult = false;
     //  --------- End of attributes data members ----------
-
+ 
+    
     //--------- Start of properties data members ----------
     /**
      * The list of attribute name used to composed the resum state and the spectrum result.
