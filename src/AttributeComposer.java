@@ -12,9 +12,12 @@
 //
 // $Author: ounsy $
 //
-// $Revision: 1.14.2.2 $
+// $Revision: 1.14.2.3 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.14.2.2  2007/01/29 14:56:32  ounsy
+// now using the groupactions APIs
+//
 // Revision 1.14  2006/12/21 11:45:44  katyho
 // Clear all the tables
 //
@@ -83,7 +86,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     protected String attr_attributesResultReport_read[] = new String[10000];
     protected boolean attr_booleanResult = false;
     
-    IAttributeComposerFacade facade;
+    private IAttributeComposerFacade facade;
     //  --------- End of attributes data members ----------
 
     //--------- Start of properties data members ----------
@@ -272,8 +275,8 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
                  set_status("Device is not initialzed properly :\n" + exception.getMessage());
              }
          }//End run
-     }).start();
-     //}).run();
+     //}).start();
+     }).run();
      
      //testReadTimes ();
  }
@@ -578,7 +581,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * Method always executed before command execution.
   */
  //=========================================================
- public void always_executed_hook()
+ public synchronized void always_executed_hook()
  {
      get_logger().info("In always_executed_hook method()");
      try
@@ -635,7 +638,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   *            read
   */
  //===================================================================
- public void read_attr_hardware(Vector attr_list)
+ public synchronized void read_attr_hardware(Vector attr_list)
  {
      get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
      try
@@ -750,7 +753,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * @param attr reference to the Attribute object
   */
  //===================================================================
- public void read_attr(Attribute attr)throws DevFailed
+ public synchronized void read_attr(Attribute attr)throws DevFailed
  {
      String attr_name = attr.get_name();
      get_logger().info("In read_attr for attribute " + attr_name);
@@ -877,7 +880,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command write the given value on all the attributes
   */
  //=========================================================
- public void set_all_values(double argin)throws DevFailed
+ public synchronized void set_all_values(double argin)throws DevFailed
  {
      get_logger().info("Entering set_all_values()");
      m_sentValue = argin;
@@ -886,6 +889,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          return;
      
      facade.setNewValue ( argin );
+     facade.executeWriteNumericAttributesTask ();
      m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
      
      get_logger().info("Exiting set_all_values()");
@@ -1036,7 +1040,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the format property eg : %6.3f on all the attributes
   */
  //=========================================================
- public void set_all_format(String argin) throws DevFailed
+ public synchronized void set_all_format(String argin) throws DevFailed
  {
      get_logger().info("Entering set_all_format()");
      m_sentProperty = argin;
@@ -1055,7 +1059,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the Unit property eg : Volt on all the attributes
   */
  //=========================================================
- public void set_all_unit(String argin) throws DevFailed
+ public synchronized void set_all_unit(String argin) throws DevFailed
  {
      get_logger().info("Entering set_all_unit()");
      m_sentProperty = argin;
@@ -1073,7 +1077,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the minimum value property on all the attributes
   */
  //=========================================================
- public void set_all_min_value(double argin) throws DevFailed
+ public synchronized void set_all_min_value(double argin) throws DevFailed
  {
      get_logger().info("Entering set_all_min_value()");
      m_sentProperty = String.valueOf(argin);
@@ -1091,7 +1095,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the maximum value property on all the attributes
   */
  //=========================================================
- public void set_all_max_value(double argin)throws DevFailed
+ public synchronized void set_all_max_value(double argin)throws DevFailed
  {
      get_logger().info("Entering set_all_max_value()");
      m_sentProperty = String.valueOf(argin);
@@ -1109,7 +1113,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the minimum alarm value property on all the attributes
   */
  //=========================================================
- public void set_all_min_alarm(double argin) throws DevFailed
+ public synchronized void set_all_min_alarm(double argin) throws DevFailed
  {
      get_logger().info("Entering set_all_min_alarm()");
      m_sentProperty = String.valueOf(argin);
@@ -1127,7 +1131,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the maximum alarm value property on all the attributes
   */
  //=========================================================
- public void set_all_max_alarm(double argin)throws DevFailed
+ public synchronized void set_all_max_alarm(double argin)throws DevFailed
  {
      get_logger().info("Entering set_all_max_alarm()");
      m_sentProperty = String.valueOf(argin);
@@ -1145,7 +1149,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the Label property on all the attributes
   */
  //=========================================================
- public void set_all_label(String argin)throws DevFailed
+ public synchronized void set_all_label(String argin)throws DevFailed
  {
      get_logger().info("Entering set_all_label()");
      m_sentProperty = argin;
