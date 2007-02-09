@@ -12,9 +12,13 @@
 //
 // $Author: ounsy $
 //
-// $Revision: 1.14.2.3 $
+// $Revision: 1.14.2.4 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.14.2.3  2007/01/31 15:22:49  ounsy
+// -made commands synchronized
+// -init_device is now called synchronously
+//
 // Revision 1.14.2.2  2007/01/29 14:56:32  ounsy
 // now using the groupactions APIs
 //
@@ -68,9 +72,12 @@ import fr.esrf.TangoDs.DeviceImpl;
 import fr.esrf.TangoDs.Except;
 import fr.esrf.TangoDs.TangoConst;
 import fr.esrf.TangoDs.Util;
-import fr.soleil.core.groupactions.apis.group.attributes.write.info.modifiers.AttributeInfoModifierFactory;
-import fr.soleil.core.groupactions.facade.attributecomposer.AttributeComposerFacade;
-import fr.soleil.core.groupactions.facade.attributecomposer.IAttributeComposerFacade;
+import fr.soleil.core.groupactions.apis.groupactions.attributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
+import fr.soleil.core.groupactions.apis.tangowrapping.AttrQualityWrapper;
+import fr.soleil.core.groupactions.apis.tangowrapping.target.ITarget;
+import fr.soleil.core.groupactions.apis.tangowrapping.target.TargetFactory;
+import fr.soleil.core.groupactions.facades.attributecomposer.AttributeComposerFacade;
+import fr.soleil.core.groupactions.facades.attributecomposer.IAttributeComposerFacade;
 import fr.soleil.device.utils.QualityUtilities;
 import fr.soleil.device.utils.StateUtilities;
 
@@ -120,15 +127,15 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     /*
      * The table of priority <AttrQuality, Priority>
      */
-    private Hashtable<AttrQuality, Integer> m_priorityTable = new Hashtable<AttrQuality, Integer>();   
+    private Map<AttrQuality, Integer> m_priorityTable = new Hashtable<AttrQuality, Integer>();   
     /*
      * The table of the quality and their associated device State 
      */
-    private Hashtable<AttrQuality, DevState> m_qualityStateTable = new Hashtable<AttrQuality, DevState>();
+    private Map<AttrQuality, DevState> m_qualityStateTable = new Hashtable<AttrQuality, DevState>();
     /*
      * The table of the attribute name and their associated qualities <attributeName, AttrQuality>
      */
-    private Hashtable<String, AttrQuality> m_attributeQualityTable = new Hashtable<String, AttrQuality>();
+    private Hashtable<String, AttrQualityWrapper> m_attributeQualityTable = new Hashtable<String, AttrQualityWrapper>();
     /*
      * The table of the attribute name and their associated proxy group <attributeName, Group> 
      */
@@ -136,12 +143,12 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     /*
      * The table of the attribute name and their associated read values <attributeName, values>
      */
-    private Hashtable<String, Double> m_attributeValueTable = new Hashtable<String, Double>();
+    private Map<String, Double> m_attributeValueTable = new Hashtable<String, Double>();
     /*
      * The table of the attribute name and their associated message result <attributeName, message report>
      * the messages are generated during the connexion, read or write instruction
      */
-    private Hashtable<String, String> m_attributeResultReportTable = new Hashtable<String, String>();
+    private Map<String, String> m_attributeResultReportTable = new Hashtable<String, String>();
     
     private Vector<Boolean> m_booleanLogicalVector = new Vector<Boolean>();
     
@@ -214,11 +221,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      //build the associated PriorityList property
      //Syntax "Quality name","PriorityNumber"
      priorityList = new String[m_priorityTable.size()];
-     Enumeration enumeration  = m_priorityTable.keys();
+     Iterator enumeration  = m_priorityTable.keySet().iterator();
      int tmpIndex = 0;
-     while (enumeration.hasMoreElements())
+     while (enumeration.hasNext())
      {
-         AttrQuality key = (AttrQuality) enumeration.nextElement();
+         AttrQuality key = (AttrQuality) enumeration.next();
          priorityList[tmpIndex]= QualityUtilities.getNameForQuality(key) + "," + m_priorityTable.get(key);
          tmpIndex++;
      }
@@ -442,7 +449,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      
      int numberOfProxies = deviceToAttributes.size();
      Iterator<String> it = deviceToAttributes.keySet().iterator ();
-     DeviceProxy [] proxies = new DeviceProxy [ numberOfProxies  ];
+     ITarget [] proxies = new ITarget [ numberOfProxies  ];
      String[][] attributes = new String[numberOfProxies][];
      
      int i = 0;
@@ -450,7 +457,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      {
          String nextDevice = it.next ();
          //System.out.println( "CLA/nextDevice|"+nextDevice);
-         proxies [ i ] = new DeviceProxy ( nextDevice );
+         proxies [ i ] = TargetFactory.getTarget ( new DeviceProxy ( nextDevice ) );
          
          Collection<String> attributesForThisDevice = deviceToAttributes.get( nextDevice );
          Iterator<String> it2 = attributesForThisDevice.iterator ();
@@ -597,8 +604,8 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          //tangoGroupForAttributes.readNumericAttributesSortedByDevice();//refresh the qualities at the same time
          facade.executeReadNumericAttributesWithQualitiesTask();//refresh the qualities at the same time
          //Map<String, AttrQuality> states = tangoGroupForAttributes.getQualities();
-         Map<String, AttrQuality> states = facade.getQualities();
-         m_attributeQualityTable = (Hashtable<String, AttrQuality>) states;
+         Map<String, AttrQualityWrapper> states = facade.getNumericAttributeQualities();
+         m_attributeQualityTable = (Hashtable<String, AttrQualityWrapper>) states;
          //traceAttributeToQualityTable ("NEW");
          
          if(m_StateUpdater == null || !m_StateUpdater.isAlive())
@@ -622,7 +629,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      while ( it.hasNext () )
      {
          String nextAttr = (String) it.next ();
-         AttrQuality nextVal = m_attributeQualityTable.get ( nextAttr );
+         AttrQuality nextVal = m_attributeQualityTable.get ( nextAttr ).getAttrQuality();
          System.out.println ( "      nextAttr|"+nextAttr+"|nextQuality|"+QualityUtilities.getNameForQuality(nextVal) );
      }
      System.out.println ( "traceAttributeToQualityTable "+comment + " ^^^^^^^^" );
@@ -804,11 +811,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          // Add your own code here
          //System.out.println("Read attributesResult m_attributeResultReportTable.size()" + m_attributeResultReportTable.size());
          attr_attributesResultReport_read = new String[m_attributeResultReportTable.size()];
-         Enumeration enumeration = m_attributeResultReportTable.keys();
+         Iterator enumeration = m_attributeResultReportTable.keySet().iterator();
          int tmpIndex = 0;
-         while(enumeration.hasMoreElements())
+         while(enumeration.hasNext())
          {
-             String key = (String)enumeration.nextElement();
+             String key = (String)enumeration.next();
              attr_attributesResultReport_read[tmpIndex]= key + "->" +(String)m_attributeResultReportTable.get(key);
              tmpIndex++;
          }
@@ -888,7 +895,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      if(!m_initializedQuality)
          return;
      
-     facade.setNewValue ( argin );
+     facade.setNewNumericAttributesValue ( argin );
      facade.executeWriteNumericAttributesTask ();
      m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
      
@@ -1045,7 +1052,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      get_logger().info("Entering set_all_format()");
      m_sentProperty = argin;
      
-     facade.setAttributeInfoModifier ( AttributeInfoModifierFactory.getModifier ( AttributeInfoModifierFactory.FORMAT , m_sentProperty ) );
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getFormatModifier(m_sentProperty) );
      facade.executeSetAttributesInfoTask ();
      //facade.executeSetAttributesInfoTask.executeSetAttributeInfoForGroup ();
      m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
@@ -1064,7 +1071,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      get_logger().info("Entering set_all_unit()");
      m_sentProperty = argin;
      
-     facade.setAttributeInfoModifier( AttributeInfoModifierFactory.getModifier ( AttributeInfoModifierFactory.UNIT , m_sentProperty ) );
+     facade.setModifierForSetAttributesInfoTask( AttributeInfoModifierFactory.getUnitModifier ( m_sentProperty ) );
      facade.executeSetAttributesInfoTask ();
      m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
      
@@ -1082,7 +1089,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      get_logger().info("Entering set_all_min_value()");
      m_sentProperty = String.valueOf(argin);
      
-     facade.setAttributeInfoModifier ( AttributeInfoModifierFactory.getModifier ( AttributeInfoModifierFactory.MIN_VALUE , m_sentProperty ) );
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getMinValueModifier ( m_sentProperty ) );
      facade.executeSetAttributesInfoTask ();
      m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
      
@@ -1100,7 +1107,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      get_logger().info("Entering set_all_max_value()");
      m_sentProperty = String.valueOf(argin);
      
-     facade.setAttributeInfoModifier ( AttributeInfoModifierFactory.getModifier ( AttributeInfoModifierFactory.MAX_VALUE , m_sentProperty ) );
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getMaxValueModifier( m_sentProperty ) );
      facade.executeSetAttributesInfoTask ();
      m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
      
@@ -1118,7 +1125,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      get_logger().info("Entering set_all_min_alarm()");
      m_sentProperty = String.valueOf(argin);
      
-     facade.setAttributeInfoModifier ( AttributeInfoModifierFactory.getModifier ( AttributeInfoModifierFactory.MIN_ALARM , m_sentProperty ) );
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getMinAlarmModifier ( m_sentProperty ) );
      facade.executeSetAttributesInfoTask ();
      m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
      
@@ -1136,7 +1143,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      get_logger().info("Entering set_all_max_alarm()");
      m_sentProperty = String.valueOf(argin);
      
-     facade.setAttributeInfoModifier ( AttributeInfoModifierFactory.getModifier ( AttributeInfoModifierFactory.MAX_ALARM , m_sentProperty ) );
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getMaxAlarmModifier ( m_sentProperty ) );
      facade.executeSetAttributesInfoTask ();
      m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
      
@@ -1154,7 +1161,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      get_logger().info("Entering set_all_label()");
      m_sentProperty = argin;
      
-     facade.setAttributeInfoModifier ( AttributeInfoModifierFactory.getModifier ( AttributeInfoModifierFactory.LABEL , m_sentProperty ) );
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getLabelModifier ( m_sentProperty ) );
      facade.executeSetAttributesInfoTask ();
      m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
      
@@ -1289,13 +1296,13 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
              //Hastable used to delete the double entry of priority <Priority,Quality>
              Hashtable <Integer, AttrQuality> tmpResumPriorityTable = new Hashtable<Integer, AttrQuality>();
            
-             Enumeration enumeration = m_attributeQualityTable.keys();
-             while(enumeration.hasMoreElements())
+             Iterator enumeration = m_attributeQualityTable.keySet().iterator();
+             while(enumeration.hasNext())
              {
-                String tmpAttributeName = (String)enumeration.nextElement();
+                String tmpAttributeName = (String)enumeration.next();
                 AttrQuality attrQualityTmp = AttrQuality.ATTR_INVALID;
                 if(m_attributeQualityTable.containsKey(tmpAttributeName))
-                    attrQualityTmp = (AttrQuality) m_attributeQualityTable.get(tmpAttributeName);
+                    attrQualityTmp = m_attributeQualityTable.get(tmpAttributeName).getAttrQuality();
                 
                 int tmpIndex = get_index_for_attribute(tmpAttributeName);
                 if(tmpIndex != -1)
@@ -1521,12 +1528,12 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          String tmpAttributeName = "";
          try
          {
-             Enumeration enumeration = m_attributeValueTable.keys();
+             Iterator enumeration = m_attributeValueTable.keySet().iterator();
              //Apply the logical gates on attr_booleanSpectrum_read
              m_booleanLogicalVector.clear();
-             while (enumeration.hasMoreElements())
+             while (enumeration.hasNext())
              {
-                tmpAttributeName = (String) enumeration.nextElement();
+                tmpAttributeName = (String) enumeration.next();
                 double tmpReadValue = ((Double)m_attributeValueTable.get(tmpAttributeName)).doubleValue();
                 short tmpBooleanShortValue = 0;
                 Boolean tmpBooleanValue = Boolean.FALSE;
