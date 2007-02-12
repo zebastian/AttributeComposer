@@ -12,9 +12,12 @@
 //
 // $Author: ounsy $
 //
-// $Revision: 1.14.2.4 $
+// $Revision: 1.14.2.5 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.14.2.4  2007/02/09 16:45:12  ounsy
+// utilise les nouvelles apis de groupe post-refactoring
+//
 // Revision 1.14.2.3  2007/01/31 15:22:49  ounsy
 // -made commands synchronized
 // -init_device is now called synchronously
@@ -72,14 +75,14 @@ import fr.esrf.TangoDs.DeviceImpl;
 import fr.esrf.TangoDs.Except;
 import fr.esrf.TangoDs.TangoConst;
 import fr.esrf.TangoDs.Util;
-import fr.soleil.core.groupactions.apis.groupactions.attributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
-import fr.soleil.core.groupactions.apis.tangowrapping.AttrQualityWrapper;
-import fr.soleil.core.groupactions.apis.tangowrapping.target.ITarget;
-import fr.soleil.core.groupactions.apis.tangowrapping.target.TargetFactory;
-import fr.soleil.core.groupactions.facades.attributecomposer.AttributeComposerFacade;
-import fr.soleil.core.groupactions.facades.attributecomposer.IAttributeComposerFacade;
 import fr.soleil.device.utils.QualityUtilities;
 import fr.soleil.device.utils.StateUtilities;
+import fr.soleil.groupactions.core.groupactions.attributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
+import fr.soleil.groupactions.core.tangowrapping.AttrQualityWrapper;
+import fr.soleil.groupactions.core.tangowrapping.target.ITarget;
+import fr.soleil.groupactions.core.tangowrapping.target.TargetFactory;
+import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacade;
+import fr.soleil.groupactions.facades.attributecomposer.IAttributeComposerFacade;
 
 public class AttributeComposer extends DeviceImpl  implements TangoConst
 {
