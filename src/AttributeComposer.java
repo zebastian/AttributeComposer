@@ -12,9 +12,12 @@
 //
 // $Author: ounsy $
 //
-// $Revision: 1.14.2.5 $
+// $Revision: 1.14.2.6 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.14.2.5  2007/02/12 14:59:32  ounsy
+// uses the latest version of the group APIs
+//
 // Revision 1.14.2.4  2007/02/09 16:45:12  ounsy
 // utilise les nouvelles apis de groupe post-refactoring
 //
@@ -79,10 +82,10 @@ import fr.soleil.device.utils.QualityUtilities;
 import fr.soleil.device.utils.StateUtilities;
 import fr.soleil.groupactions.core.groupactions.attributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
 import fr.soleil.groupactions.core.tangowrapping.AttrQualityWrapper;
-import fr.soleil.groupactions.core.tangowrapping.target.ITarget;
+import fr.soleil.groupactions.core.tangowrapping.target.Target;
 import fr.soleil.groupactions.core.tangowrapping.target.TargetFactory;
+import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacadeImpl;
 import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacade;
-import fr.soleil.groupactions.facades.attributecomposer.IAttributeComposerFacade;
 
 public class AttributeComposer extends DeviceImpl  implements TangoConst
 {
@@ -96,7 +99,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     protected String attr_attributesResultReport_read[] = new String[10000];
     protected boolean attr_booleanResult = false;
     
-    private IAttributeComposerFacade facade;
+    private AttributeComposerFacade facade;
     //  --------- End of attributes data members ----------
 
     //--------- Start of properties data members ----------
@@ -452,7 +455,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      
      int numberOfProxies = deviceToAttributes.size();
      Iterator<String> it = deviceToAttributes.keySet().iterator ();
-     ITarget [] proxies = new ITarget [ numberOfProxies  ];
+     Target [] proxies = new Target [ numberOfProxies  ];
      String[][] attributes = new String[numberOfProxies][];
      
      int i = 0;
@@ -477,7 +480,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          i++;
      }
      
-     facade = new AttributeComposerFacade ( proxies , attributes );
+     facade = new AttributeComposerFacadeImpl ( proxies , attributes );
  }
  
  /*
