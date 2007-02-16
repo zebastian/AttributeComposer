@@ -12,9 +12,29 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.14 $
+// $Revision: 1.15 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.14.2.6  2007/02/15 13:41:05  ounsy
+// uses the new Group APIs naming:
+// interfaces drop the "I" prefix in their names
+//
+// Revision 1.14.2.5  2007/02/12 14:59:32  ounsy
+// uses the latest version of the group APIs
+//
+// Revision 1.14.2.4  2007/02/09 16:45:12  ounsy
+// utilise les nouvelles apis de groupe post-refactoring
+//
+// Revision 1.14.2.3  2007/01/31 15:22:49  ounsy
+// -made commands synchronized
+// -init_device is now called synchronously
+//
+// Revision 1.14.2.2  2007/01/29 14:56:32  ounsy
+// now using the groupactions APIs
+//
+// Revision 1.14  2006/12/21 11:45:44  katyho
+// Clear all the tables
+//
 // Revision 1.7  2006/05/02 09:56:14  katyho
 // Remove all the command in the clear Method
 //
@@ -38,9 +58,12 @@ package AttributeComposer;
 
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
@@ -48,19 +71,11 @@ import org.omg.CORBA.SystemException;
 import org.omg.CORBA.UserException;
 
 import fr.esrf.Tango.AttrQuality;
-import fr.esrf.Tango.DevError;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.Tango.DevState;
-import fr.esrf.TangoApi.AttributeInfo;
 import fr.esrf.TangoApi.Database;
 import fr.esrf.TangoApi.DbDatum;
-import fr.esrf.TangoApi.DeviceAttribute;
 import fr.esrf.TangoApi.DeviceProxy;
-import fr.esrf.TangoApi.Group.Group;
-import fr.esrf.TangoApi.Group.GroupAttrReply;
-import fr.esrf.TangoApi.Group.GroupAttrReplyList;
-import fr.esrf.TangoApi.Group.GroupReply;
-import fr.esrf.TangoApi.Group.GroupReplyList;
 import fr.esrf.TangoDs.Attribute;
 import fr.esrf.TangoDs.DeviceClass;
 import fr.esrf.TangoDs.DeviceImpl;
@@ -69,10 +84,15 @@ import fr.esrf.TangoDs.TangoConst;
 import fr.esrf.TangoDs.Util;
 import fr.soleil.device.utils.QualityUtilities;
 import fr.soleil.device.utils.StateUtilities;
+import fr.soleil.groupactions.core.groupactions.attributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
+import fr.soleil.groupactions.core.tangowrapping.AttrQualityWrapper;
+import fr.soleil.groupactions.core.tangowrapping.target.Target;
+import fr.soleil.groupactions.core.tangowrapping.target.TargetFactory;
+import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacadeImpl;
+import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacade;
 
 public class AttributeComposer extends DeviceImpl  implements TangoConst
 {
-
     protected int state;
     
     //--------- Start of attributes data members ----------
@@ -82,6 +102,8 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     protected short attr_attributesNumberPriorityList_read[] = new short[1000];
     protected String attr_attributesResultReport_read[] = new String[10000];
     protected boolean attr_booleanResult = false;
+    
+    private AttributeComposerFacade facade;
     //  --------- End of attributes data members ----------
 
     //--------- Start of properties data members ----------
@@ -115,28 +137,28 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     /*
      * The table of priority <AttrQuality, Priority>
      */
-    private Hashtable<AttrQuality, Integer> m_priorityTable = new Hashtable<AttrQuality, Integer>();   
+    private Map<AttrQuality, Integer> m_priorityTable = new Hashtable<AttrQuality, Integer>();   
     /*
      * The table of the quality and their associated device State 
      */
-    private Hashtable<AttrQuality, DevState> m_qualityStateTable = new Hashtable<AttrQuality, DevState>();
+    private Map<AttrQuality, DevState> m_qualityStateTable = new Hashtable<AttrQuality, DevState>();
     /*
      * The table of the attribute name and their associated qualities <attributeName, AttrQuality>
      */
-    private Hashtable<String, AttrQuality> m_attributeQualityTable = new Hashtable<String, AttrQuality>();
+    private Hashtable<String, AttrQualityWrapper> m_attributeQualityTable = new Hashtable<String, AttrQualityWrapper>();
     /*
      * The table of the attribute name and their associated proxy group <attributeName, Group> 
      */
-    private Hashtable<String, Group> m_attributeGroupTable = new Hashtable<String, Group>();
+    //private Hashtable<String, Group> m_attributeGroupTable = new Hashtable<String, Group>();
     /*
      * The table of the attribute name and their associated read values <attributeName, values>
      */
-    private Hashtable<String, Double> m_attributeValueTable = new Hashtable<String, Double>();
+    private Map<String, Double> m_attributeValueTable = new Hashtable<String, Double>();
     /*
      * The table of the attribute name and their associated message result <attributeName, message report>
      * the messages are generated during the connexion, read or write instruction
      */
-    private Hashtable<String, String> m_attributeResultReportTable = new Hashtable<String, String>();
+    private Map<String, String> m_attributeResultReportTable = new Hashtable<String, String>();
     
     private Vector<Boolean> m_booleanLogicalVector = new Vector<Boolean>();
     
@@ -209,11 +231,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      //build the associated PriorityList property
      //Syntax "Quality name","PriorityNumber"
      priorityList = new String[m_priorityTable.size()];
-     Enumeration enumeration  = m_priorityTable.keys();
+     Iterator enumeration  = m_priorityTable.keySet().iterator();
      int tmpIndex = 0;
-     while (enumeration.hasMoreElements())
+     while (enumeration.hasNext())
      {
-         AttrQuality key = (AttrQuality) enumeration.nextElement();
+         AttrQuality key = (AttrQuality) enumeration.next();
          priorityList[tmpIndex]= QualityUtilities.getNameForQuality(key) + "," + m_priorityTable.get(key);
          tmpIndex++;
      }
@@ -270,7 +292,10 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
                  set_status("Device is not initialzed properly :\n" + exception.getMessage());
              }
          }//End run
-     }).start();
+     //}).start();
+     }).run();
+     
+     //testReadTimes ();
  }
 
  /*
@@ -280,7 +305,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  {
      m_attributeValueTable.clear();
      m_attributeQualityTable.clear();
-     m_attributeGroupTable.clear();
+     //m_attributeGroupTable.clear();
      m_attributeResultReportTable.clear();
      m_QualityReader = null;
      m_ValueReader = null;
@@ -366,8 +391,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          attr_attributesQualityList_read[i] = QualityUtilities.getNameForQuality(AttrQuality.ATTR_INVALID) + "-" + attributeNameList[i];
          attr_attributesNumberPriorityList_read[i] = ((Integer)m_priorityTable.get(AttrQuality.ATTR_INVALID)).shortValue();
      }
-     
+
      //First remove the double entry of proxy thanks to a Vector
+     
+     Hashtable<String, Collection<String>> deviceToAttributes = new Hashtable<String, Collection<String>> ();
+     
      for(int i = 0; i < attributeNameList.length; i++)
      {
          String tmpFullAttributeName = attributeNameList[i].trim();
@@ -391,8 +419,20 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          }
          try
          {
+             //CLA VVVVVVV
+             //System.out.println( "CLA/groupCreation/tmpDeviceName|"+tmpDeviceName);
+             Collection<String> attributesForThisDevice = deviceToAttributes.get( tmpDeviceName );
+             if ( attributesForThisDevice == null )
+             {
+                 attributesForThisDevice = new Vector<String> ();
+                 deviceToAttributes.put ( tmpDeviceName, attributesForThisDevice );
+             }
+             //System.out.println( "CLA/groupCreation/tmpAttributeName|"+tmpAttributeName+"|tmpDeviceName|"+tmpDeviceName);
+             attributesForThisDevice.add ( tmpAttributeName );
+             //CLA ^^^^^^
+             
              // If the group does not exists yet
-             if(!m_attributeGroupTable.containsKey(tmpAttributeName))
+             /*if(!m_attributeGroupTable.containsKey(tmpAttributeName))
              {
                  Group newGroup = new Group(tmpAttributeName);
                  newGroup.add(tmpDeviceName);
@@ -402,7 +442,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
              {
                  Group tmpGroup = (Group)m_attributeGroupTable.get(tmpAttributeName);
                  tmpGroup.add(tmpDeviceName);
-             }
+             }*/
          }
          catch (Exception e)
          {
@@ -416,6 +456,35 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      //Arrived here the device is initiazed correctly 
      m_initializedQuality = true;
      m_initializedValue = true;
+     
+     int numberOfProxies = deviceToAttributes.size();
+     Iterator<String> it = deviceToAttributes.keySet().iterator ();
+     Target [] proxies = new Target [ numberOfProxies  ];
+     String[][] attributes = new String[numberOfProxies][];
+     
+     int i = 0;
+     while ( it.hasNext () )
+     {
+         String nextDevice = it.next ();
+         //System.out.println( "CLA/nextDevice|"+nextDevice);
+         proxies [ i ] = TargetFactory.getTarget ( new DeviceProxy ( nextDevice ) );
+         
+         Collection<String> attributesForThisDevice = deviceToAttributes.get( nextDevice );
+         Iterator<String> it2 = attributesForThisDevice.iterator ();
+         attributes [ i ] = new String [ attributesForThisDevice.size () ];
+         int j = 0;
+         while ( it2.hasNext () )
+         {
+             String nextAttribute = it2.next ();
+             //System.out.println( "  CLA/nextAttribute|"+nextAttribute);
+             attributes [i][j] = nextAttribute;
+             j++;
+         }
+         
+         i++;
+     }
+     
+     facade = new AttributeComposerFacadeImpl ( proxies , attributes );
  }
  
  /*
@@ -529,16 +598,25 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * Method always executed before command execution.
   */
  //=========================================================
- public void always_executed_hook()
+ public synchronized void always_executed_hook()
  {
      get_logger().info("In always_executed_hook method()");
      try
      {
-         if(m_initializedValue && (m_QualityReader == null || !m_QualityReader.isAlive()))
+         /*if(m_initializedValue && (m_QualityReader == null || !m_QualityReader.isAlive()))
          {
              m_QualityReader = new QualityReader();
-             m_QualityReader.start();
+             //m_QualityReader.start();
+             m_QualityReader.run();
          }
+         traceAttributeToQualityTable ("OLD");*/
+         
+         //tangoGroupForAttributes.readNumericAttributesSortedByDevice();//refresh the qualities at the same time
+         facade.executeReadNumericAttributesWithQualitiesTask();//refresh the qualities at the same time
+         //Map<String, AttrQuality> states = tangoGroupForAttributes.getQualities();
+         Map<String, AttrQualityWrapper> states = facade.getNumericAttributeQualities();
+         m_attributeQualityTable = (Hashtable<String, AttrQualityWrapper>) states;
+         //traceAttributeToQualityTable ("NEW");
          
          if(m_StateUpdater == null || !m_StateUpdater.isAlive())
          {
@@ -554,6 +632,19 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      }
   }
  
+ private void traceAttributeToQualityTable ( String comment ) 
+ {
+     Iterator it= m_attributeQualityTable.keySet().iterator();
+     System.out.println ( "traceAttributeToQualityTable "+comment + " VVVVVVV" );
+     while ( it.hasNext () )
+     {
+         String nextAttr = (String) it.next ();
+         AttrQuality nextVal = m_attributeQualityTable.get ( nextAttr ).getAttrQuality();
+         System.out.println ( "      nextAttr|"+nextAttr+"|nextQuality|"+QualityUtilities.getNameForQuality(nextVal) );
+     }
+     System.out.println ( "traceAttributeToQualityTable "+comment + " ^^^^^^^^" );
+ }
+ 
  //===================================================================
  /**
   * Method called by the read_attributes CORBA operation to read device
@@ -564,16 +655,33 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   *            read
   */
  //===================================================================
- public void read_attr_hardware(Vector attr_list)
+ public synchronized void read_attr_hardware(Vector attr_list)
  {
      get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
      try
      {
-         if(m_initializedQuality && (m_ValueReader == null || !m_ValueReader.isAlive()))
+         //long beforeOld = System.currentTimeMillis ();
+         /*if(m_initializedQuality && (m_ValueReader == null || !m_ValueReader.isAlive()))
          {
              m_ValueReader = new ValueReader();
-             m_ValueReader.start();
-         }
+             //m_ValueReader.start();
+             m_ValueReader.run();
+         }*/
+         /*long afterOld = System.currentTimeMillis ();
+         long old = afterOld-beforeOld;            
+         traceAttributeValueTable("OLD");
+         
+         long beforeNew = System.currentTimeMillis ();*/
+         //Map<String, Double> states = tangoGroupForAttributes.readNumericAttributesSortedByAttribute();
+         facade.executeReadNumericAttributesWithQualitiesTask ();
+         Map<String, Double> states = facade.getNumericAttributesSortedByAttribute();
+         //m_attributeValueTable = (Hashtable<String, Double>) states;
+         m_attributeValueTable = (Hashtable<String, Double>) states;
+         /*long afterNew = System.currentTimeMillis ();
+         long neww = afterNew-beforeNew;
+         traceAttributeValueTable("NEW");*/
+         
+         //System.out.println ( "CLA/read_attr_hardware/old/"+old+"/new/"+neww );
          
          if(m_ValueUpdater == null || !m_ValueUpdater.isAlive())
          {
@@ -588,7 +696,72 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          set_status(m_insertformat.format(new Date()) + " : Fatal Error Execute and Init Command \n" + e.getMessage());
      }
  }
+ 
+ public void testReadTimes() 
+ {
+     try
+     {
+         long totalOld = 0;
+         long totalNew = 0;
+         int LOOPS = 10;
+         for ( int i = 0 ; i < LOOPS ; i ++ )
+         {
+             /*long beforeOld = System.currentTimeMillis ();
+             if(m_initializedQuality && (m_ValueReader == null || !m_ValueReader.isAlive()))
+             {
+                 m_ValueReader = new ValueReader();
+                 //m_ValueReader.start();
+                 m_ValueReader.run();
+             }
+             long afterOld = System.currentTimeMillis ();
+             long old = afterOld-beforeOld;       
+             totalOld += old;*/
+             
+             long beforeNew = System.currentTimeMillis ();
+             //Map<String, Double> states = tangoGroupForAttributes.readNumericAttributesSortedByAttribute();
+             Map<String, Double> states = facade.getNumericAttributesSortedByAttribute();
+             m_attributeValueTable = (Hashtable<String, Double>) states;
+             long afterNew = System.currentTimeMillis ();
+             long neww = afterNew-beforeNew;
+             totalNew += neww;
+         }
+         
+         System.out.println ( "CLA/testReadTimes/totalOld/"+totalOld+"/totalNew/"+totalNew );
+     }
+     catch (Throwable e)
+     {
+         e.printStackTrace ();
+     }
+ }
+ 
+ private void traceAttributeValueTable ( String comment ) 
+ {
+     Iterator<String> it= m_attributeValueTable.keySet().iterator();
+     System.out.println ( "traceAttributeValueTable "+comment + " VVVVVVV" );
+     while ( it.hasNext () )
+     {
+         String nextAttribute = it.next ();
+         Double nextVal = m_attributeValueTable.get ( nextAttribute );
+         System.out.println ( "      nextAttribute|"+nextAttribute+"|nextVal|"+nextVal );
+     }
+     System.out.println ( "traceAttributeValueTable "+comment + " ^^^^^^^^" );
+ }
+ 
+ private void traceAttributeResultReportTable ( String comment ) 
+ {
+     Iterator<String> it= m_attributeResultReportTable.keySet().iterator();
+     System.out.println ( "traceAttributeResultReportTable "+comment + " VVVVVVV" );
+     while ( it.hasNext () )
+     {
+         String nextAttribute = it.next ();
+         String nextVal = m_attributeResultReportTable.get ( nextAttribute );
+         System.out.println ( "      nextAttribute|"+nextAttribute+"|nextVal|"+nextVal );
+     }
+     System.out.println ( "traceAttributeResultReportTable "+comment + " ^^^^^^^^" );
+ }
 
+ 
+ 
  //===================================================================
  /**
   * Method called by the read_attributes CORBA operation to set internal
@@ -597,7 +770,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * @param attr reference to the Attribute object
   */
  //===================================================================
- public void read_attr(Attribute attr)throws DevFailed
+ public synchronized void read_attr(Attribute attr)throws DevFailed
  {
      String attr_name = attr.get_name();
      get_logger().info("In read_attr for attribute " + attr_name);
@@ -648,11 +821,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          // Add your own code here
          //System.out.println("Read attributesResult m_attributeResultReportTable.size()" + m_attributeResultReportTable.size());
          attr_attributesResultReport_read = new String[m_attributeResultReportTable.size()];
-         Enumeration enumeration = m_attributeResultReportTable.keys();
+         Iterator enumeration = m_attributeResultReportTable.keySet().iterator();
          int tmpIndex = 0;
-         while(enumeration.hasMoreElements())
+         while(enumeration.hasNext())
          {
-             String key = (String)enumeration.nextElement();
+             String key = (String)enumeration.next();
              attr_attributesResultReport_read[tmpIndex]= key + "->" +(String)m_attributeResultReportTable.get(key);
              tmpIndex++;
          }
@@ -724,7 +897,21 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command write the given value on all the attributes
   */
  //=========================================================
- public void set_all_values(double argin)throws DevFailed
+ public synchronized void set_all_values(double argin)throws DevFailed
+ {
+     get_logger().info("Entering set_all_values()");
+     m_sentValue = argin;
+     //Do nothing if the device is in error
+     if(!m_initializedQuality)
+         return;
+     
+     facade.setNewNumericAttributesValue ( argin );
+     facade.executeWriteNumericAttributesTask ();
+     m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
+     
+     get_logger().info("Exiting set_all_values()");
+ }
+ /*public void set_all_values(double argin)throws DevFailed
  {
      get_logger().info("Entering set_all_values()");
      m_sentValue = argin;
@@ -862,7 +1049,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          }//End run
      }).start();
      get_logger().info("Exiting set_all_values()");
- }
+ }*/
 
 //=========================================================
  /**
@@ -870,56 +1057,16 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the format property eg : %6.3f on all the attributes
   */
  //=========================================================
- public void set_all_format(String argin) throws DevFailed
+ public synchronized void set_all_format(String argin) throws DevFailed
  {
      get_logger().info("Entering set_all_format()");
      m_sentProperty = argin;
-     //Execute in a Thread to avoid the time out problem
-     (new Thread()
-     {
-         public void run()
-         {
-             for(Enumeration enumeration = m_attributeGroupTable.keys(); enumeration.hasMoreElements();)
-             {
-                 String tmpAttributeName = (String)enumeration.nextElement();
-                 String tmpDeviceName = "";
-                 Group tmpGroup = (Group)m_attributeGroupTable.get(tmpAttributeName);
-                 try
-                 {
-                     //Get Each proxy
-                     for(int i = 0; i < tmpGroup.get_size(true); i++)
-                     {
-                         try
-                         {
-                             //!! Beware index begin at 1 for group
-                             DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i+1);
-                             //System.out.println("tmpDevicePoxy="+tmpDevicePoxy);
-                             if(tmpDevicePoxy != null)
-                             {
-                                 tmpDeviceName = tmpDevicePoxy.get_name();
-                                 AttributeInfo tmpAttributeInfo = tmpDevicePoxy.get_attribute_info(tmpAttributeName);
-    	                         tmpAttributeInfo.format = m_sentProperty;
-    	                         tmpDevicePoxy.set_attribute_info(new AttributeInfo[] {tmpAttributeInfo});
-    	                         tmpAttributeInfo = null;
-    	                         tmpDevicePoxy = null;
-                                 
-                                 //Arrived here the command is SUCCESS
-                                 m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Format property to " + String.valueOf(m_sentProperty) + " : SUCCESS");
-                             }
-                         }
-                         catch(Exception exception)
-                         {
-                             m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Unit property to " + String.valueOf(m_sentProperty) + " : FAILED");
-                         }
-                     }
-                 }
-                 catch(Exception exception)
-                 {
-                     m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Unexpected Error Set Format property to " + String.valueOf(m_sentProperty) + " : " + exception.getMessage());
-                 }
-             }
-         }
-     }).start();
+     
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getFormatModifier(m_sentProperty) );
+     facade.executeSetAttributesInfoTask ();
+     //facade.executeSetAttributesInfoTask.executeSetAttributeInfoForGroup ();
+     m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
+     
      get_logger().info("Exiting set_all_format()");
  }
 
@@ -929,55 +1076,15 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the Unit property eg : Volt on all the attributes
   */
  //=========================================================
- public void set_all_unit(String argin) throws DevFailed
+ public synchronized void set_all_unit(String argin) throws DevFailed
  {
      get_logger().info("Entering set_all_unit()");
      m_sentProperty = argin;
-     //Execute in a Thread to avoid the time out problem
-     (new Thread()
-     {
-         public void run()
-         {
-             for(Enumeration enumeration = m_attributeGroupTable.keys(); enumeration.hasMoreElements();)
-             {
-                 String tmpAttributeName = (String)enumeration.nextElement();
-                 String tmpDeviceName = "";
-                 Group tmpGroup = (Group)m_attributeGroupTable.get(tmpAttributeName);
-                 try
-                 {
-                     //Get Each proxy
-                     for(int i = 0; i < tmpGroup.get_size(true); i++)
-                     {
-                         try
-                         {
-                             //!! Beware index begin at 1 for group
-                             DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i+1);
-                             if(tmpDevicePoxy != null)
-                             {
-                                 tmpDeviceName = tmpDevicePoxy.get_name();
-                                 AttributeInfo tmpAttributeInfo = tmpDevicePoxy.get_attribute_info(tmpAttributeName);
-                                 tmpAttributeInfo.unit = m_sentProperty;
-                                 tmpDevicePoxy.set_attribute_info(new AttributeInfo[] {tmpAttributeInfo});
-                                 tmpAttributeInfo = null;
-                                 tmpDevicePoxy = null;
-                                 
-                                 //Arrived here the command is SUCCESS
-                                 m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Unit property to " + String.valueOf(m_sentProperty) + " : SUCCESS");
-                             }
-                         }
-                         catch(Exception exception)
-                         {
-                             m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Unit property to " + String.valueOf(m_sentProperty) + " : FAILED");
-                         }
-                     }
-                 }
-                 catch(Exception exception)
-                 {
-                     m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Unexpected Error Set Unit property to " + String.valueOf(m_sentProperty) + " : " + exception.getMessage());
-                 }
-             }
-         }
-     }).start();
+     
+     facade.setModifierForSetAttributesInfoTask( AttributeInfoModifierFactory.getUnitModifier ( m_sentProperty ) );
+     facade.executeSetAttributesInfoTask ();
+     m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
+     
      get_logger().info("Exiting set_all_unit()");
  }
 
@@ -987,55 +1094,15 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the minimum value property on all the attributes
   */
  //=========================================================
- public void set_all_min_value(double argin) throws DevFailed
+ public synchronized void set_all_min_value(double argin) throws DevFailed
  {
      get_logger().info("Entering set_all_min_value()");
      m_sentProperty = String.valueOf(argin);
-     //Execute in a Thread to avoid the time out problem
-     (new Thread()
-     {
-         public void run()
-         {
-             for(Enumeration enumeration = m_attributeGroupTable.keys(); enumeration.hasMoreElements();)
-             {
-                 String tmpAttributeName = (String)enumeration.nextElement();
-                 String tmpDeviceName = "";
-                 Group tmpGroup = (Group)m_attributeGroupTable.get(tmpAttributeName);
-                 try
-                 {
-                     //Get Each proxy
-                     for(int i = 0; i < tmpGroup.get_size(true); i++)
-                     {
-                         try
-                         {
-                             //!! Beware index begin at 1 for group
-                             DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i+1);
-                             if(tmpDevicePoxy != null)
-                             {
-                                 tmpDeviceName = tmpDevicePoxy.get_name();
-                                 AttributeInfo tmpAttributeInfo = tmpDevicePoxy.get_attribute_info(tmpAttributeName);
-                                 tmpAttributeInfo.min_value = m_sentProperty;
-                                 tmpDevicePoxy.set_attribute_info(new AttributeInfo[] {tmpAttributeInfo});
-                                 tmpAttributeInfo = null;
-                                 tmpDevicePoxy = null;
-                                 
-                                 //Arrived here the command is SUCCESS
-                                 m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Minimum Value property to " + String.valueOf(m_sentProperty) + " : SUCCESS");
-                             }
-                         }
-                         catch(Exception exception)
-                         {
-                             m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Minimum Value property to " + String.valueOf(m_sentProperty) + " : FAILED");
-                         }
-                     }
-                 }
-                 catch(Exception exception)
-                 {
-                     m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Unexpected Error Set Unit property to " + String.valueOf(m_sentProperty) + " : " + exception.getMessage());
-                 }
-             }
-         }
-     }).start();
+     
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getMinValueModifier ( m_sentProperty ) );
+     facade.executeSetAttributesInfoTask ();
+     m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
+     
      get_logger().info("Exiting set_all_min_value()");
  }
 
@@ -1045,55 +1112,15 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the maximum value property on all the attributes
   */
  //=========================================================
- public void set_all_max_value(double argin)throws DevFailed
+ public synchronized void set_all_max_value(double argin)throws DevFailed
  {
      get_logger().info("Entering set_all_max_value()");
      m_sentProperty = String.valueOf(argin);
-     //Execute in a Thread to avoid the time out problem
-     (new Thread()
-     {
-         public void run()
-         {
-             for(Enumeration enumeration = m_attributeGroupTable.keys(); enumeration.hasMoreElements();)
-             {
-                 String tmpAttributeName = (String)enumeration.nextElement();
-                 String tmpDeviceName = "";
-                 Group tmpGroup = (Group)m_attributeGroupTable.get(tmpAttributeName);
-                 try
-                 {
-                     //Get Each proxy
-                     for(int i = 0; i < tmpGroup.get_size(true); i++)
-                     {
-                         try
-                         {
-                             //!! Beware index begin at 1 for group
-                             DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i+1);
-                             if(tmpDevicePoxy != null)
-                             {
-                                 tmpDeviceName = tmpDevicePoxy.get_name();
-                                 AttributeInfo tmpAttributeInfo = tmpDevicePoxy.get_attribute_info(tmpAttributeName);
-                                 tmpAttributeInfo.max_value = m_sentProperty;
-                                 tmpDevicePoxy.set_attribute_info(new AttributeInfo[] {tmpAttributeInfo});
-                                 tmpAttributeInfo = null;
-                                 tmpDevicePoxy = null;
-                                 
-                                 //Arrived here the command is SUCCESS
-                                 m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Maximum Value property to " + String.valueOf(m_sentProperty) + " : SUCCESS");
-                             }
-                         }
-                         catch(Exception exception)
-                         {
-                             m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Maximum Value property to " + String.valueOf(m_sentProperty) + " : FAILED");
-                         }
-                     }
-                 }
-                 catch(Exception exception)
-                 {
-                     m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Unexpected Error Set Maximum Value property to " + String.valueOf(m_sentProperty) + " : " + exception.getMessage());
-                 }
-             }
-         }
-     }).start();
+     
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getMaxValueModifier( m_sentProperty ) );
+     facade.executeSetAttributesInfoTask ();
+     m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
+     
      get_logger().info("Exiting set_all_max_value()");
  }
 
@@ -1103,55 +1130,15 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the minimum alarm value property on all the attributes
   */
  //=========================================================
- public void set_all_min_alarm(double argin) throws DevFailed
+ public synchronized void set_all_min_alarm(double argin) throws DevFailed
  {
      get_logger().info("Entering set_all_min_alarm()");
      m_sentProperty = String.valueOf(argin);
-     //Execute in a Thread to avoid the time out problem
-     (new Thread()
-     {
-         public void run()
-         {
-             for(Enumeration enumeration = m_attributeGroupTable.keys(); enumeration.hasMoreElements();)
-             {
-                 String tmpAttributeName = (String)enumeration.nextElement();
-                 String tmpDeviceName = "";
-                 Group tmpGroup = (Group)m_attributeGroupTable.get(tmpAttributeName);
-                 try
-                 {
-                     //Get Each proxy
-                     for(int i = 0; i < tmpGroup.get_size(true); i++)
-                     {
-                         try
-                         {
-                             //!! Beware index begin at 1 for group
-                             DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i+1);
-                             if(tmpDevicePoxy != null)
-                             {
-                                 tmpDeviceName = tmpDevicePoxy.get_name();
-                                 AttributeInfo tmpAttributeInfo = tmpDevicePoxy.get_attribute_info(tmpAttributeName);
-                                 tmpAttributeInfo.min_alarm = m_sentProperty;
-                                 tmpDevicePoxy.set_attribute_info(new AttributeInfo[] {tmpAttributeInfo});
-                                 tmpAttributeInfo = null;
-                                 tmpDevicePoxy = null;
-                                 
-                                 //Arrived here the command is SUCCESS
-                                 m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Minimum Alarm Value property to " + String.valueOf(m_sentProperty) + " : SUCCESS");
-                             }
-                         }
-                         catch(Exception exception)
-                         {
-                             m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Minimum Alarm Value property to " + String.valueOf(m_sentProperty) + " : FAILED");
-                         }
-                     }
-                 }
-                 catch(Exception exception)
-                 {
-                     m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Unexpected Error Set Minimum Alarm Value property to " + String.valueOf(m_sentProperty) + " : " + exception.getMessage());
-                 }
-             }
-         }
-     }).start();
+     
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getMinAlarmModifier ( m_sentProperty ) );
+     facade.executeSetAttributesInfoTask ();
+     m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
+     
      get_logger().info("Exiting set_all_min_alarm()");
  }
 
@@ -1161,55 +1148,15 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the maximum alarm value property on all the attributes
   */
  //=========================================================
- public void set_all_max_alarm(double argin)throws DevFailed
+ public synchronized void set_all_max_alarm(double argin)throws DevFailed
  {
      get_logger().info("Entering set_all_max_alarm()");
      m_sentProperty = String.valueOf(argin);
-     //Execute in a Thread to avoid the time out problem
-     (new Thread()
-     {
-         public void run()
-         {
-             for(Enumeration enumeration = m_attributeGroupTable.keys(); enumeration.hasMoreElements();)
-             {
-                 String tmpAttributeName = (String)enumeration.nextElement();
-                 String tmpDeviceName = "";
-                 Group tmpGroup = (Group)m_attributeGroupTable.get(tmpAttributeName);
-                 try
-                 {
-                     //Get Each proxy
-                     for(int i = 0; i < tmpGroup.get_size(true); i++)
-                     {
-                         try
-                         {
-                             //!! Beware index begin at 1 for group
-                             DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i+1);
-                             if(tmpDevicePoxy != null)
-                             {
-                                 tmpDeviceName = tmpDevicePoxy.get_name();
-                                 AttributeInfo tmpAttributeInfo = tmpDevicePoxy.get_attribute_info(tmpAttributeName);
-                                 tmpAttributeInfo.max_alarm = m_sentProperty;
-                                 tmpDevicePoxy.set_attribute_info(new AttributeInfo[] {tmpAttributeInfo});
-                                 tmpAttributeInfo = null;
-                                 tmpDevicePoxy = null;
-                                 
-                                 //Arrived here the command is SUCCESS
-                                 m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Maximum Alarm Value property to " + String.valueOf(m_sentProperty) + " : SUCCESS");
-                             }
-                         }
-                         catch(Exception exception)
-                         {
-                             m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Maximum Alarm Value property to " + String.valueOf(m_sentProperty) + " : FAILED");
-                         }
-                     }
-                 }
-                 catch(Exception exception)
-                 {
-                     m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Unexpected Error Set Maximum Alarm Value property to " + String.valueOf(m_sentProperty) + " : " + exception.getMessage());
-                 }
-             }
-         }
-     }).start();
+     
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getMaxAlarmModifier ( m_sentProperty ) );
+     facade.executeSetAttributesInfoTask ();
+     m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
+     
      get_logger().info("Exiting set_all_max_alarm()");
  }
 
@@ -1219,58 +1166,18 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * This command set the Label property on all the attributes
   */
  //=========================================================
- public void set_all_label(String argin)throws DevFailed
+ public synchronized void set_all_label(String argin)throws DevFailed
  {
      get_logger().info("Entering set_all_label()");
      m_sentProperty = argin;
-     //Execute in a Thread to avoid the time out problem
-     (new Thread()
-     {
-         public void run()
-         {
-             for(Enumeration enumeration = m_attributeGroupTable.keys(); enumeration.hasMoreElements();)
-             {
-                 String tmpAttributeName = (String)enumeration.nextElement();
-                 String tmpDeviceName = "";
-                 Group tmpGroup = (Group)m_attributeGroupTable.get(tmpAttributeName);
-                 try
-                 {
-                     //Get Each proxy
-                     for(int i = 0; i < tmpGroup.get_size(true); i++)
-                     {
-                         try
-                         {
-                             //!! Beware index begin at 1 for group
-                             DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i+1);
-                             if(tmpDevicePoxy != null)
-                             {
-                                 tmpDeviceName = tmpDevicePoxy.get_name();
-                                 AttributeInfo tmpAttributeInfo = tmpDevicePoxy.get_attribute_info(tmpAttributeName);
-                                 tmpAttributeInfo.label = m_sentProperty;
-                                 tmpDevicePoxy.set_attribute_info(new AttributeInfo[] {tmpAttributeInfo});
-                                 tmpAttributeInfo = null;
-                                 tmpDevicePoxy = null;
-                                 
-                                 //Arrived here the command is SUCCESS
-                                 m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Label property to " + String.valueOf(m_sentProperty) + " : SUCCESS");
-                             }
-                         }
-                         catch(Exception exception)
-                         {
-                             m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Set Label property to " + String.valueOf(m_sentProperty) + " : FAILED");
-                         }
-                     }
-                 }
-                 catch(Exception exception)
-                 {
-                     m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName, m_insertformat.format(new Date()) + " : Unexpected Error Set Label property to " + String.valueOf(m_sentProperty) + " : " + exception.getMessage());
-                 }
-             }
-         }
-     }).start();
+     
+     facade.setModifierForSetAttributesInfoTask ( AttributeInfoModifierFactory.getLabelModifier ( m_sentProperty ) );
+     facade.executeSetAttributesInfoTask ();
+     m_attributeResultReportTable = (Hashtable<String, String>) facade.getActionResultMessages ();
+     
      get_logger().info("Exiting set_all_label()");
  }
-
+ 
 //=========================================================
  /**
   * Execute command "ActivateAll" on device.
@@ -1299,7 +1206,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  /*
   * This Thread read the quality of all attribute
   */
- public class QualityReader extends Thread
+ /*public class QualityReader extends Thread
  {
      public void run()
      {
@@ -1363,7 +1270,27 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
              }
         }//end for
      }//end run method
- }
+ }*/
+ 
+ /*public class QualityReaderCLA extends Thread
+ {
+     public void run()
+     {
+        try 
+        {
+            tangoGroup.readAttributesSortedByAttribute();
+            Map<String, AttrQuality> states = tangoGroup.getQualities();
+            m_attributeQualityTable = (Hashtable<String, AttrQuality>) states;
+        } 
+        catch (DevFailed e) 
+        {
+            e.printStackTrace();
+            
+            m_initializedQuality = false;
+            set_state(DevState.FAULT);
+        }
+     }
+ }*/
 //=========================================================
  /*
   * This Thread compute a resum state for the device
@@ -1379,13 +1306,13 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
              //Hastable used to delete the double entry of priority <Priority,Quality>
              Hashtable <Integer, AttrQuality> tmpResumPriorityTable = new Hashtable<Integer, AttrQuality>();
            
-             Enumeration enumeration = m_attributeQualityTable.keys();
-             while(enumeration.hasMoreElements())
+             Iterator enumeration = m_attributeQualityTable.keySet().iterator();
+             while(enumeration.hasNext())
              {
-                String tmpAttributeName = (String)enumeration.nextElement();
+                String tmpAttributeName = (String)enumeration.next();
                 AttrQuality attrQualityTmp = AttrQuality.ATTR_INVALID;
                 if(m_attributeQualityTable.containsKey(tmpAttributeName))
-                    attrQualityTmp = (AttrQuality) m_attributeQualityTable.get(tmpAttributeName);
+                    attrQualityTmp = m_attributeQualityTable.get(tmpAttributeName).getAttrQuality();
                 
                 int tmpIndex = get_index_for_attribute(tmpAttributeName);
                 if(tmpIndex != -1)
@@ -1455,7 +1382,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  /*
   * This Thread read the value of all attributes
   */
- public class ValueReader extends Thread
+ /*public class ValueReader extends Thread
  {
      public void run()
      {
@@ -1598,7 +1525,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
              return;
          }
      }
- }
+ }*/
 //=========================================================
  /*
   * This Thread update all the spectrum attribute
@@ -1611,12 +1538,12 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          String tmpAttributeName = "";
          try
          {
-             Enumeration enumeration = m_attributeValueTable.keys();
+             Iterator enumeration = m_attributeValueTable.keySet().iterator();
              //Apply the logical gates on attr_booleanSpectrum_read
              m_booleanLogicalVector.clear();
-             while (enumeration.hasMoreElements())
+             while (enumeration.hasNext())
              {
-                tmpAttributeName = (String) enumeration.nextElement();
+                tmpAttributeName = (String) enumeration.next();
                 double tmpReadValue = ((Double)m_attributeValueTable.get(tmpAttributeName)).doubleValue();
                 short tmpBooleanShortValue = 0;
                 Boolean tmpBooleanValue = Boolean.FALSE;
@@ -1647,13 +1574,13 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      System.out.println("ATTRIBUTECOMPOSER VERSION 2.1.0");
      
      try
-	 {
-	    //Unexport the server before
-	    if(argv != null && argv.length > 0)
-	    {
-	        new Database().unexport_server("attributecomposer/" + argv[0]);
-	    }
-	 }
+     {
+        //Unexport the server before
+        if(argv != null && argv.length > 0)
+        {
+            new Database().unexport_server("attributecomposer/" + argv[0]);
+        }
+     }
      catch(Exception e){}
      
      try
