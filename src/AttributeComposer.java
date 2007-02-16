@@ -12,9 +12,12 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.15 $
+// $Revision: 1.16 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.15  2007/02/16 10:28:43  katyho
+// Merging groups
+//
 // Revision 1.14.2.6  2007/02/15 13:41:05  ounsy
 // uses the new Group APIs naming:
 // interfaces drop the "I" prefix in their names
@@ -88,8 +91,8 @@ import fr.soleil.groupactions.core.groupactions.attributes.write.attributeinfomo
 import fr.soleil.groupactions.core.tangowrapping.AttrQualityWrapper;
 import fr.soleil.groupactions.core.tangowrapping.target.Target;
 import fr.soleil.groupactions.core.tangowrapping.target.TargetFactory;
-import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacadeImpl;
 import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacade;
+import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacadeImpl;
 
 public class AttributeComposer extends DeviceImpl  implements TangoConst
 {
@@ -165,7 +168,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     /*
      * The value to send on all the attributes
      */
-    private double m_sentValue = Double.NaN;
+    //private double m_sentValue = Double.NaN;
     /*
      * The property value to send on all the attributes
      */
@@ -177,15 +180,15 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     /*
      * When the device is well initialized = true for the value
      */
-    private boolean m_initializedValue = false;
+    //private boolean m_initializedValue = false;
     /*
      * The thread that Read the Quality of all attributes
      */
-    private Thread m_QualityReader = null;
+    //private Thread m_QualityReader = null;
     /*
      * The thread that Read the values of all attributes
      */
-    private Thread m_ValueReader = null;
+    //private Thread m_ValueReader = null;
     /*
      * The thread that Update the State of the device
      */
@@ -307,14 +310,14 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      m_attributeQualityTable.clear();
      //m_attributeGroupTable.clear();
      m_attributeResultReportTable.clear();
-     m_QualityReader = null;
-     m_ValueReader = null;
+     //m_QualityReader = null;
+     //m_ValueReader = null;
      m_StateUpdater = null;
      m_ValueUpdater = null;     
-     m_sentValue = Double.NaN;
+     //m_sentValue = Double.NaN;
      m_sentProperty = "";
      m_initializedQuality = false;
-     m_initializedValue = false;
+     //m_initializedValue = false;
  }
  
  /**
@@ -455,7 +458,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      
      //Arrived here the device is initiazed correctly 
      m_initializedQuality = true;
-     m_initializedValue = true;
+     //m_initializedValue = true;
      
      int numberOfProxies = deviceToAttributes.size();
      Iterator<String> it = deviceToAttributes.keySet().iterator ();
@@ -631,7 +634,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          set_status(m_insertformat.format(new Date()) + " : Fatal Error Execute and Init Command \n" + e.getMessage());
      }
   }
- 
+ /*
  private void traceAttributeToQualityTable ( String comment ) 
  {
      Iterator it= m_attributeQualityTable.keySet().iterator();
@@ -644,7 +647,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      }
      System.out.println ( "traceAttributeToQualityTable "+comment + " ^^^^^^^^" );
  }
- 
+ */
  //===================================================================
  /**
   * Method called by the read_attributes CORBA operation to read device
@@ -733,7 +736,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          e.printStackTrace ();
      }
  }
- 
+ /*
  private void traceAttributeValueTable ( String comment ) 
  {
      Iterator<String> it= m_attributeValueTable.keySet().iterator();
@@ -760,7 +763,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      System.out.println ( "traceAttributeResultReportTable "+comment + " ^^^^^^^^" );
  }
 
- 
+ */
  
  //===================================================================
  /**
@@ -900,7 +903,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  public synchronized void set_all_values(double argin)throws DevFailed
  {
      get_logger().info("Entering set_all_values()");
-     m_sentValue = argin;
+     //m_sentValue = argin;
      //Do nothing if the device is in error
      if(!m_initializedQuality)
          return;
@@ -1561,7 +1564,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          }
          catch(Exception e)
          {
-             m_initializedValue = false;
+             //m_initializedValue = false;
              set_state(DevState.FAULT);
              set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot read " + tmpAttributeName + " relaunch the necessary attributes and make and Init Command : \n" + e.getMessage());
              return;
