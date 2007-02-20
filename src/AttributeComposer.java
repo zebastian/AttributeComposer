@@ -12,9 +12,12 @@
 //
 // $Author: ounsy $
 //
-// $Revision: 1.17 $
+// $Revision: 1.18 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.17  2007/02/20 09:33:42  ounsy
+// corrected a bug in read_attr_hardware
+//
 // Revision 1.16  2007/02/16 11:19:25  katyho
 // Remove warning for the AttributeComposer.java
 //
@@ -151,7 +154,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     /*
      * The table of the attribute name and their associated qualities <attributeName, AttrQuality>
      */
-    private Hashtable<String, AttrQualityWrapper> m_attributeQualityTable = new Hashtable<String, AttrQualityWrapper>();
+    private Map<String, AttrQualityWrapper> m_attributeQualityTable = new Hashtable<String, AttrQualityWrapper>();
     /*
      * The table of the attribute name and their associated read values <attributeName, values>
      */
@@ -172,7 +175,15 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     /*
      * The thread that Update the State of the device
      */
+    private Thread m_StateReader = null;
+    /*
+     * The thread that Update the State of the device
+     */
     private Thread m_StateUpdater = null;
+    /*
+     * The thread that Update the values of the spectrumResult
+     */
+    private Thread m_ValueReader = null;
     /*
      * The thread that Update the values of the spectrumResult
      */
@@ -571,10 +582,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      get_logger().info("In always_executed_hook method()");
      try
      {
-         facade.executeReadNumericAttributesWithQualitiesTask();//refresh the qualities at the same time
-         Map<String, AttrQualityWrapper> states = facade.getNumericAttributeQualities();
-         m_attributeQualityTable = (Hashtable<String, AttrQualityWrapper>) states;
-         //traceAttributeToQualityTable ("NEW");
+         if(m_StateReader == null || !m_StateReader.isAlive())
+         {
+             m_StateReader = new StateReader();
+             m_StateReader.start();
+         }
          
          if(m_StateUpdater == null || !m_StateUpdater.isAlive())
          {
@@ -618,8 +630,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
      try
      {
-         facade.executeReadNumericAttributesWithQualitiesTask ();
-         m_attributeValueTable = facade.getNumericAttributesSortedByAttribute();
+         if(m_ValueReader == null || !m_ValueReader.isAlive())
+         {
+             m_ValueReader = new ValueUpdater();
+             m_ValueReader.start();
+         }
          
          if(m_ValueUpdater == null || !m_ValueUpdater.isAlive())
          {
@@ -1007,6 +1022,38 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
 //=========================================================
  
 //=========================================================
+
+ public class ValueReader extends Thread
+ {
+     public void run()
+     {
+         try
+         {
+             facade.executeReadNumericAttributesWithQualitiesTask ();
+             m_attributeValueTable = facade.getNumericAttributesSortedByAttribute();
+         }
+         catch (Exception e)
+         {
+             m_initializedQuality = false;
+             set_state(DevState.FAULT);
+             set_status(m_insertformat.format(new Date()) + " : Fatal Error Execute and Init Command \n" + e.getMessage());
+         }
+         finally
+         {
+             m_attributeResultReportTable = facade.getActionResultMessages();
+         }
+     }
+ }
+ 
+ public class StateReader extends Thread
+ {
+     public void run()
+     {
+         facade.executeReadNumericAttributesWithQualitiesTask();//refresh the qualities at the same time
+         m_attributeQualityTable = facade.getNumericAttributeQualities();
+         //traceAttributeToQualityTable ("NEW");
+     }
+ }
  /*
   * This Thread compute a resum state for the device
   */
