@@ -10,11 +10,14 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: ounsy $
+// $Author: katyho $
 //
-// $Revision: 1.18 $
+// $Revision: 1.19 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.18  2007/02/20 11:19:17  ounsy
+// the value reading is now done in a separate thread
+//
 // Revision 1.17  2007/02/20 09:33:42  ounsy
 // corrected a bug in read_attr_hardware
 //
@@ -91,6 +94,7 @@ import fr.esrf.TangoDs.DeviceImpl;
 import fr.esrf.TangoDs.Except;
 import fr.esrf.TangoDs.TangoConst;
 import fr.esrf.TangoDs.Util;
+import fr.esrf.TangoDs.WAttribute;
 import fr.soleil.device.utils.QualityUtilities;
 import fr.soleil.device.utils.StateUtilities;
 import fr.soleil.groupactions.core.groupactions.attributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
@@ -718,6 +722,43 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  }
 
  */
+
+//  ===================================================================
+    /**
+     *  Method called by the write_attributes CORBA operation to
+     *  write device hardware.
+     *
+     *  @param  attr_list   vector of index in the attribute vector
+     *      of attribute to be written
+     */
+//  ===================================================================         
+    public void write_attr_hardware(Vector attr_list)
+    {
+        Util.out2.println("In write_attr_hardware for "+attr_list.size()+" attribute(s)");
+    
+        for (int i=0 ; i<attr_list.size() ; i++)
+        {
+            WAttribute att = dev_attr.get_w_attr_by_ind(((Integer)(attr_list.elementAt(i))).intValue());
+            String attr_name = att.get_name();
+            
+            //  Switch on attribute name
+            //---------------------------------
+            if (attr_name.equalsIgnoreCase("booleanResult"))
+            {
+                try
+                {
+                    if(att.get_bool_write_value())
+                        activate_all();
+                    else
+                        deactivage_all();
+                }
+                catch (DevFailed e)
+                {
+                    e.printStackTrace ();
+                }
+            }
+        }
+    }
  
  //===================================================================
  /**
