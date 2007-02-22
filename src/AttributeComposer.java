@@ -12,9 +12,12 @@
 //
 // $Author: ounsy $
 //
-// $Revision: 1.20 $
+// $Revision: 1.21 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.20  2007/02/22 10:14:10  ounsy
+// specified in their declaration what kind of Threads StateReader etc.. are
+//
 // Revision 1.19  2007/02/21 15:11:41  katyho
 // Fixe bug 3779 and make booleanResult writable
 //
@@ -635,6 +638,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  public void read_attr_hardware(Vector attr_list)
  {
      get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
+     if ( facade == null || ! this.m_initializedQuality )
+     {
+         return;
+     }
+     
      try
      {
          if(m_ValueReader == null || !m_ValueReader.isAlive())
@@ -1071,6 +1079,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  {
      public void run()
      {
+	     if ( facade == null || ! this.m_initializedQuality )
+         {
+             return;
+         }
+         
          try
          {
              facade.executeReadNumericAttributesWithQualitiesTask ();
@@ -1093,6 +1106,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  {
      public void run()
      {
+         if ( facade == null || ! this.m_initializedQuality )
+         {
+             return;
+         }
+         
          facade.executeReadNumericAttributesWithQualitiesTask();//refresh the qualities at the same time
          m_attributeQualityTable = facade.getNumericAttributeQualities();
          //traceAttributeToQualityTable ("NEW");
@@ -1105,6 +1123,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  {
      public void run()
      {
+         if ( facade == null )
+         {
+             return;
+         }
+         
          try
          {
              //Hastable used to delete the double entry of quality <Quality,Priority>
@@ -1194,6 +1217,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  {
      public void run()
      {
+         if ( facade == null )
+         {
+             return;
+         }
+         
          //System.out.println("ValueUpdater"); 
          String tmpAttributeName = "";
          try
