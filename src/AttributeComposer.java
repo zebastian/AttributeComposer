@@ -10,11 +10,14 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: katyho $
+// $Author: ounsy $
 //
-// $Revision: 1.19 $
+// $Revision: 1.20 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.19  2007/02/21 15:11:41  katyho
+// Fixe bug 3779 and make booleanResult writable
+//
 // Revision 1.18  2007/02/20 11:19:17  ounsy
 // the value reading is now done in a separate thread
 //
@@ -179,19 +182,19 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     /*
      * The thread that Update the State of the device
      */
-    private Thread m_StateReader = null;
+    private StateReader m_StateReader = null;
     /*
      * The thread that Update the State of the device
      */
-    private Thread m_StateUpdater = null;
+    private StateUpdater m_StateUpdater = null;
     /*
      * The thread that Update the values of the spectrumResult
      */
-    private Thread m_ValueReader = null;
+    private ValueReader m_ValueReader = null;
     /*
      * The thread that Update the values of the spectrumResult
      */
-    private Thread m_ValueUpdater = null;
+    private ValueUpdater m_ValueUpdater = null;
     /**
      *  SimpleDateFormat to timeStamp the error messages
      */
@@ -581,7 +584,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   * Method always executed before command execution.
   */
  //=========================================================
- public synchronized void always_executed_hook()
+ public void always_executed_hook()
  {
      get_logger().info("In always_executed_hook method()");
      try
@@ -629,17 +632,17 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
   *            read
   */
  //===================================================================
- public synchronized void read_attr_hardware(Vector attr_list)
+ public void read_attr_hardware(Vector attr_list)
  {
      get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
      try
      {
          if(m_ValueReader == null || !m_ValueReader.isAlive())
          {
-             m_ValueReader = new ValueUpdater();
+             m_ValueReader = new ValueReader();
              m_ValueReader.start();
          }
-         
+
          if(m_ValueUpdater == null || !m_ValueUpdater.isAlive())
          {
              m_ValueUpdater = new ValueUpdater();
@@ -1171,12 +1174,12 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
              tmpResumQualityTable.clear();
              tmpResumPriorityTable.clear();
          }
-         catch(Exception exception)
+         catch(Exception e)
          {
              //exception.printStackTrace();
              m_initializedQuality = false;
              set_state(DevState.FAULT);
-             set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot compute a resum State for the device\n" + exception.getMessage());
+             set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot compute a resum State for the device\n" + e.getMessage());
              return;
          }
      }
