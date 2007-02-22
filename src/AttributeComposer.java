@@ -12,9 +12,12 @@
 //
 // $Author: ounsy $
 //
-// $Revision: 1.21 $
+// $Revision: 1.22 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.21  2007/02/22 15:01:33  ounsy
+// corected a bug : attributeResultReport didn't work for KO attributes on startup
+//
 // Revision 1.20  2007/02/22 10:14:10  ounsy
 // specified in their declaration what kind of Threads StateReader etc.. are
 //
@@ -1079,7 +1082,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  {
      public void run()
      {
-	     if ( facade == null || ! this.m_initializedQuality )
+	     if ( facade == null || ! AttributeComposer.this.m_initializedQuality )
          {
              return;
          }
@@ -1106,7 +1109,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
  {
      public void run()
      {
-         if ( facade == null || ! this.m_initializedQuality )
+         if ( facade == null || ! AttributeComposer.this.m_initializedQuality )
          {
              return;
          }
