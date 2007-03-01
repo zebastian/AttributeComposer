@@ -12,9 +12,12 @@
 //
 // $Author: ounsy $
 //
-// $Revision: 1.25 $
+// $Revision: 1.26 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.25  2007/03/01 15:58:33  ounsy
+// changed imports
+//
 // Revision 1.24  2007/03/01 15:57:55  ounsy
 // changed imports
 //
@@ -118,7 +121,7 @@ import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacadeImpl;
 import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.AttrQualityWrapper;
 import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.Target;
 import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.TargetFactory;
-import fr.soleil.actiongroup.collectiveaction.onattributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
+import fr.soleil.actiongroup.collectiveaction.onattributes.attributeinfomodifier.AttributeInfoModifierFactory;
 import fr.soleil.device.utils.QualityUtilities;
 import fr.soleil.device.utils.StateUtilities;
 import fr.soleil.device.utils.TangoExceptionUtilities;
