@@ -10,11 +10,14 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: katyho $
+// $Author: ounsy $
 //
-// $Revision: 1.23 $
+// $Revision: 1.24 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.23  2007/02/22 15:51:42  katyho
+// Fixe Bug of unKnowned attributes
+//
 // Revision 1.22  2007/02/22 15:03:35  ounsy
 // corected a bug : attributeResultReport didn't work for KO attributes on startup
 //
@@ -107,15 +110,14 @@ import fr.esrf.TangoDs.Except;
 import fr.esrf.TangoDs.TangoConst;
 import fr.esrf.TangoDs.Util;
 import fr.esrf.TangoDs.WAttribute;
+import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacade;
+import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacadeImpl;
+import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.AttrQualityWrapper;
+import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.Target;
+import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.TargetFactory;
+import fr.soleil.actiongroup.collectiveaction.onattributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
 import fr.soleil.device.utils.QualityUtilities;
 import fr.soleil.device.utils.StateUtilities;
-import fr.soleil.device.utils.TangoExceptionUtilities;
-import fr.soleil.groupactions.core.groupactions.attributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
-import fr.soleil.groupactions.core.tangowrapping.AttrQualityWrapper;
-import fr.soleil.groupactions.core.tangowrapping.target.Target;
-import fr.soleil.groupactions.core.tangowrapping.target.TargetFactory;
-import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacade;
-import fr.soleil.groupactions.facades.attributecomposer.AttributeComposerFacadeImpl;
 
 public class AttributeComposer extends DeviceImpl  implements TangoConst
 {
