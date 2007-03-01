@@ -12,9 +12,12 @@
 //
 // $Author: ounsy $
 //
-// $Revision: 1.24 $
+// $Revision: 1.25 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.24  2007/03/01 15:57:55  ounsy
+// changed imports
+//
 // Revision 1.23  2007/02/22 15:51:42  katyho
 // Fixe Bug of unKnowned attributes
 //
@@ -118,6 +121,7 @@ import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.Ta
 import fr.soleil.actiongroup.collectiveaction.onattributes.write.attributeinfomodifier.AttributeInfoModifierFactory;
 import fr.soleil.device.utils.QualityUtilities;
 import fr.soleil.device.utils.StateUtilities;
+import fr.soleil.device.utils.TangoExceptionUtilities;
 
 public class AttributeComposer extends DeviceImpl  implements TangoConst
 {
