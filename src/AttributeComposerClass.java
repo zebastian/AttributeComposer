@@ -10,7 +10,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.10 $
+// $Revision: 1.11 $
 //
 // $Log: not supported by cvs2svn $
 // Revision 1.5  2006/05/02 09:54:54  katyho
@@ -293,7 +293,7 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
         attribute_boolean_spectrum.set_default_properties(attribute_boolean_spectrum_prop);
         att_list.addElement(attribute_boolean_spectrum);
         
-        Attr attribute_boolean_result = new Attr("booleanResult", Tango_DEV_BOOLEAN, AttrWriteType.READ);
+        Attr attribute_boolean_result = new Attr("booleanResult", Tango_DEV_BOOLEAN, AttrWriteType.READ_WRITE);
         UserDefaultAttrProp attribute_boolean_result_prop = new UserDefaultAttrProp();
         attribute_boolean_result_prop.set_label("booleanResult");
         attribute_boolean_result_prop.set_description("Application of the logical gate LogicalBoolean gates on booleanSpectrum attribute");
@@ -315,14 +315,6 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
         state_attribute.set_default_properties(state_attribute_prop);
         att_list.addElement(state_attribute);
         
-        //Attribute : Status
-        Attr  status_attribute = new Attr("Status", Tango_DEV_STRING,AttrWriteType.READ);
-        UserDefaultAttrProp status_attribute_prop = new UserDefaultAttrProp();
-        status_attribute_prop.set_label("Status");
-        status_attribute_prop.set_description("The status of the device");
-        status_attribute.set_default_properties(status_attribute_prop);
-        att_list.addElement(status_attribute);
-
 	}
 
 //===================================================================

@@ -10,20 +10,11 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: ounsy $
+// $Author: katyho $
 //
-// $Revision: 1.26 $
+// $Revision: 1.27 $
 //
 // $Log: not supported by cvs2svn $
-// Revision 1.25  2007/03/01 15:58:33  ounsy
-// changed imports
-//
-// Revision 1.24  2007/03/01 15:57:55  ounsy
-// changed imports
-//
-// Revision 1.23  2007/02/22 15:51:42  katyho
-// Fixe Bug of unKnowned attributes
-//
 // Revision 1.22  2007/02/22 15:03:35  ounsy
 // corected a bug : attributeResultReport didn't work for KO attributes on startup
 //
@@ -116,15 +107,15 @@ import fr.esrf.TangoDs.Except;
 import fr.esrf.TangoDs.TangoConst;
 import fr.esrf.TangoDs.Util;
 import fr.esrf.TangoDs.WAttribute;
-import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacade;
-import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacadeImpl;
-import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.AttrQualityWrapper;
-import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.Target;
-import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.TargetFactory;
-import fr.soleil.actiongroup.collectiveaction.onattributes.attributeinfomodifier.AttributeInfoModifierFactory;
 import fr.soleil.device.utils.QualityUtilities;
 import fr.soleil.device.utils.StateUtilities;
 import fr.soleil.device.utils.TangoExceptionUtilities;
+import fr.soleil.actiongroup.collectiveaction.onattributes.attributeinfomodifier.AttributeInfoModifierFactory;
+import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.AttrQualityWrapper;
+import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.Target;
+import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.TargetFactory;
+import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacade;
+import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacadeImpl;
 
 public class AttributeComposer extends DeviceImpl  implements TangoConst
 {
@@ -1275,7 +1266,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
 //=========================================================
  public static void main(String argv[])
  {
-     System.out.println("ATTRIBUTECOMPOSER VERSION 3.0.2");
+     System.out.println("ATTRIBUTECOMPOSER VERSION 3.0.3");
      
      try
      {
