@@ -12,7 +12,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.27 $
+// $Revision: 1.28 $
 //
 // $Log: not supported by cvs2svn $
 // Revision 1.22  2007/02/22 15:03:35  ounsy
@@ -107,15 +107,14 @@ import fr.esrf.TangoDs.Except;
 import fr.esrf.TangoDs.TangoConst;
 import fr.esrf.TangoDs.Util;
 import fr.esrf.TangoDs.WAttribute;
-import fr.soleil.device.utils.QualityUtilities;
-import fr.soleil.device.utils.StateUtilities;
-import fr.soleil.device.utils.TangoExceptionUtilities;
-import fr.soleil.actiongroup.collectiveaction.onattributes.attributeinfomodifier.AttributeInfoModifierFactory;
+import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacade;
+import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacadeImpl;
 import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.AttrQualityWrapper;
 import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.Target;
 import fr.soleil.actiongroup.collectiveaction.components.tangowrapping.target.TargetFactory;
-import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacade;
-import fr.soleil.actiongroup.attributecomposer.AttributeComposerFacadeImpl;
+import fr.soleil.actiongroup.collectiveaction.onattributes.attributeinfomodifier.AttributeInfoModifierFactory;
+import fr.soleil.device.utils.QualityUtilities;
+import fr.soleil.device.utils.StateUtilities;
 
 public class AttributeComposer extends DeviceImpl  implements TangoConst
 {
@@ -209,6 +208,11 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      *  SimpleDateFormat to timeStamp the error messages
      */
     public static final SimpleDateFormat m_insertformat  = new SimpleDateFormat ("dd-MM-yyyy HH:mm:ss");
+    /**
+     * Version of the device
+     */
+    private static final String VERSION = "3.0.4";
+    
     
 
 //=========================================================
@@ -300,7 +304,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
              {
                  m_initializedQuality = false;
                  set_state(DevState.FAULT);
-                 set_status("Device is not initialzed properly :\n" + TangoExceptionUtilities.getMessage(exception));
+                 set_status("Device is not initialzed properly :\n" + Except.str_exception(exception));
              }
          }//End run
      //}).start();
@@ -615,7 +619,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      {
          m_initializedQuality = false;
          set_state(DevState.FAULT);
-         set_status(m_insertformat.format(new Date()) + " : Fatal Error Execute and Init Command \n" + TangoExceptionUtilities.getMessage(e));
+         set_status(m_insertformat.format(new Date()) + " : Fatal Error Execute and Init Command \n" + Except.str_exception(e));
      }
   }
  /*
@@ -668,7 +672,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      {
          m_initializedQuality = false;
          set_state(DevState.FAULT);
-         set_status(m_insertformat.format(new Date()) + " : Fatal Error Execute and Init Command \n" + TangoExceptionUtilities.getMessage(e));
+         set_status(m_insertformat.format(new Date()) + " : Fatal Error Execute and Init Command \n" + Except.str_exception(e));
      }
      finally
      {
@@ -826,10 +830,8 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          attr.set_value(StateUtilities.getNameForState(get_state()));
      }
      
-     else if (attr_name.equals("Status"))
-     {
-        attr.set_value(get_status());
-     }
+     if (attr_name.equals("version"))
+         attr.set_value(VERSION);
      
      //attr_attributesResultReport_read
      else if (attr_name == "attributesResultReport")
@@ -1100,7 +1102,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          {
              m_initializedQuality = false;
              set_state(DevState.FAULT);
-             set_status(m_insertformat.format(new Date()) + " : Fatal Error Execute and Init Command \n" + TangoExceptionUtilities.getMessage(e));
+             set_status(m_insertformat.format(new Date()) + " : Fatal Error Execute and Init Command \n" + Except.str_exception(e));
          }
          finally
          {
@@ -1209,7 +1211,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
              //exception.printStackTrace();
              m_initializedQuality = false;
              set_state(DevState.FAULT);
-             set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot compute a resum State for the device\n" + TangoExceptionUtilities.getMessage(e));
+             set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot compute a resum State for the device\n" + Except.str_exception(e));
              return;
          }
      }
@@ -1258,7 +1260,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          {
              //m_initializedValue = false;
              set_state(DevState.FAULT);
-             set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot read " + tmpAttributeName + " relaunch the necessary attributes and make and Init Command : \n" + TangoExceptionUtilities.getMessage(e));
+             set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot read " + tmpAttributeName + " relaunch the necessary attributes and make and Init Command : \n" + Except.str_exception(e));
              return;
          }
      }
@@ -1266,7 +1268,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
 //=========================================================
  public static void main(String argv[])
  {
-     System.out.println("ATTRIBUTECOMPOSER VERSION 3.0.3");
+     System.out.println("ATTRIBUTECOMPOSER VERSION " + VERSION);
      
      try
      {

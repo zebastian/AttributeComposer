@@ -10,7 +10,7 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.11 $
+// $Revision: 1.12 $
 //
 // $Log: not supported by cvs2svn $
 // Revision 1.5  2006/05/02 09:54:54  katyho
@@ -314,6 +314,14 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
         state_attribute_prop.set_description("The state of the device");
         state_attribute.set_default_properties(state_attribute_prop);
         att_list.addElement(state_attribute);
+        
+        //Attribute : Version number
+        Attr  version_attribute = new Attr("version", Tango_DEV_STRING,AttrWriteType.READ,DispLevel.EXPERT);
+        UserDefaultAttrProp version_attribute_prop = new UserDefaultAttrProp();
+        version_attribute_prop.set_label("Version");
+        version_attribute_prop.set_description("The number version of the device");
+        version_attribute.set_default_properties(version_attribute_prop);
+        att_list.addElement(version_attribute);
         
 	}
 
