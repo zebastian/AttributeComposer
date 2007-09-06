@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <parent>
+    <groupId>fr.soleil</groupId>
+    <artifactId>super-pom</artifactId>
+    <version>1.0</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fr.soleil.deviceservers</groupId>
+  <artifactId>AttributeComposer</artifactId>
+  <name>AttributeComposer</name>
+  <version>3.0.3</version>
+  <description>This library helps developper to integrate dynamic attributes into their device</description>
+  <scm>
+	<connection>scm:cvs:pserver:tango-ds.cvs.sourceforge.net:/cvsroot/tango-ds:Calculation/AttributeComposer</connection>
+	<developerConnection>scm:cvs:pserver:tango-ds.cvs.sourceforge.net:/cvsroot/tango-ds:Calculation/AttributeComposer</developerConnection>
+        <tag>release_3_0_3</tag>
+	<url>http://tango-ds.cvs.sourceforge.net/tango-ds/</url>
+  </scm>
+  <build>
+	<sourceDirectory>src</sourceDirectory>
+  </build>  
+  <dependencies>
+    <dependency>
+      <groupId>fr.esrf.tango</groupId>
+      <artifactId>TangORB</artifactId>
+      <version>${TangORB.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>fr.soleil.lib</groupId>
+      <artifactId>dtu</artifactId>
+      <version>0.3.7</version>
+    </dependency>
+  </dependencies>
+</project>
