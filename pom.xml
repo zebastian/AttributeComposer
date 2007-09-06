@@ -9,12 +9,12 @@
   <groupId>fr.soleil.deviceservers</groupId>
   <artifactId>AttributeComposer</artifactId>
   <name>AttributeComposer</name>
-  <version>3.0.3</version>
+  <version>3.0.4</version>
   <description>This library helps developper to integrate dynamic attributes into their device</description>
   <scm>
 	<connection>scm:cvs:pserver:tango-ds.cvs.sourceforge.net:/cvsroot/tango-ds:Calculation/AttributeComposer</connection>
 	<developerConnection>scm:cvs:pserver:tango-ds.cvs.sourceforge.net:/cvsroot/tango-ds:Calculation/AttributeComposer</developerConnection>
-        <tag>release_3_0_3</tag>
+        <!-- <tag>release_3_0_3</tag> -->
 	<url>http://tango-ds.cvs.sourceforge.net/tango-ds/</url>
   </scm>
   <build>
