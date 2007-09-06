@@ -8,7 +8,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>fr.soleil.deviceservers</groupId>
   <artifactId>AttributeComposer</artifactId>
-  <name>AttributeComposer</name>
+  <name>Attribute Composer</name>
   <version>3.0.4</version>
   <description>This library helps developper to integrate dynamic attributes into their device</description>
   <scm>
