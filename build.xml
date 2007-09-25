@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="jar" name="AttributeComposer">
+	<property file="build.properties"/>
+
+	<path id="project.classpath">
+        <pathelement location="bin"/>
+        <path location="../lib/"/>
+    </path>
+    <target name="init">
+        <mkdir dir="bin"/>
+    </target>
+    <target name="clean">
+        <delete dir="bin"/>
+    </target>
+    <target depends="init" name="build">
+    	<echo message="${ant.project.name}: ${ant.file}"/>
+        <javac destdir="bin">
+            <src path="src/main/java"/>
+            <classpath refid="project.classpath"/>
+        </javac>
+    </target>
+	<target name="help">
+	    <echo message="Please run: $ ant -v -projecthelp"/>
+	</target>
+
+	<target name="javadoc">
+		<javadoc access="protected" author="false" classpath="" destdir="doc" doctitle="SALSA Project" nodeprecated="false" nodeprecatedlist="false" noindex="false" nonavbar="false" notree="false" packagenames="fr.soleil.salsa.util.view,fr.soleil.salsa.controler.actuator,fr.soleil.salsa.view.actuator,fr.soleil.salsa.controler.scanconfig,fr.soleil.salsa.model.scanmanagement,fr.soleil.salsa.view.trajectory,fr.soleil.salsa.model.scannerV1,fr.soleil.salsa.controler.sensor,fr.soleil.salsa.view.decorator,fr.soleil.salsa.model,fr.soleil.salsa.util.model,fr.soleil.salsa.view.sensor,fr.soleil.salsa.view.preferences,fr.soleil.util.xstream.converter,fr.soleil.salsa.view,fr.soleil.salsa.controler.trajectory,fr.soleil.salsa.view.scan,fr.soleil.salsa.controler.scanserver,fr.soleil.salsa.controler.timebase,fr.soleil.launcher,fr.soleil.salsa.controler,fr.soleil.salsa,fr.soleil.salsa.view.timebase,fr.soleil.salsa.util,fr.soleil.salsa.model.scanconfig" source="1.4" sourcefiles="beanAPI/fr/soleil/bean/BeanFrame.java,beanAPI/fr/soleil/bean/BeanPanel.java,beanAPI/fr/soleil/bean/TestBeanApplication.java,beanAPI/fr/soleil/bean/BeanFactory.java,beanAPI/fr/soleil/bean/PluginInspector.java,beanAPI/fr/soleil/bean/AbstractBean.java" sourcepath="src" splitindex="false" use="false" version="true"/>
+	</target>
+
+	<target name="jar" depends="init,build">
+		<mkdir dir="dist" />
+		<jar  
+			jarfile="dist/${ant.project.name}-${version.major}.${version.minor}.${version.iteration}.jar"
+			basedir="bin" >
+		</jar>
+	</target>
+</project>

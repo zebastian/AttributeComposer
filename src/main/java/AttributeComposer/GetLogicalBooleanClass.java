@@ -1,5 +1,5 @@
 //+======================================================================
-// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/SetPropertyClass.java,v $
+// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/GetLogicalBooleanClass.java,v $
 //
 // Project:      Tango Device Server
 //
@@ -8,11 +8,14 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.5 $
+// $Revision: 1.1 $
 //
 // $Log: not supported by cvs2svn $
-// Revision 1.1  2006/04/25 15:02:49  katyho
-// Update the documentation and Add new functions
+// Revision 1.5  2007/03/28 12:21:19  katyho
+// Add the version attribute and use the dtu librairie
+//
+// Revision 1.1  2006/03/17 16:21:33  katyho
+// add new Command
 //
 //
 // copyleft :    European Synchrotron Radiation Facility
@@ -31,7 +34,7 @@
 
 /**
  * @author	$Author: katyho $
- * @version	$Revision: 1.5 $
+ * @version	$Revision: 1.1 $
  */
 package AttributeComposer;
 
@@ -43,29 +46,30 @@ import fr.esrf.TangoDs.*;
 
 /**
  *	Class Description:
- *	This command return the priority associated to a given State.
+ *	This command return the list of the TANGO states and their associated values.
+ *	Ex : ON = 0,  OFF=1
 */
 
 
-public class SetPropertyClass extends Command implements TangoConst
+public class GetLogicalBooleanClass extends Command implements TangoConst
 {
 	//===============================================================
 	/**
-	 *	Constructor for Command class GetPriorityForStateClass
+	 *	Constructor for Command class GetTangoStatesClass
 	 *
 	 *	@param	name	command name
 	 *	@param	in	argin type
 	 *	@param	out	argout type
 	 */
 	//===============================================================
-	public SetPropertyClass(String name,int in,int out)
+	public GetLogicalBooleanClass(String name,int in,int out)
 	{
 		super(name, in, out);
 	}
 
 	//===============================================================
 	/**
-	 *	Constructor for Command class GetPriorityForStateClass
+	 *	Constructor for Command class GetTangoStatesClass
 	 *
 	 *	@param	name            command name
 	 *	@param	in              argin type
@@ -74,13 +78,13 @@ public class SetPropertyClass extends Command implements TangoConst
 	 *	@param	out_comments    argout description
 	 */
 	//===============================================================
-	public SetPropertyClass(String name,int in,int out, String in_comments, String out_comments)
+	public GetLogicalBooleanClass(String name,int in,int out, String in_comments, String out_comments)
 	{
 		super(name, in, out, in_comments, out_comments);
 	}
 	//===============================================================
 	/**
-	 *	Constructor for Command class GetPriorityForStateClass
+	 *	Constructor for Command class GetTangoStatesClass
 	 *
 	 *	@param	name            command name
 	 *	@param	in              argin type
@@ -90,7 +94,7 @@ public class SetPropertyClass extends Command implements TangoConst
 	 *	@param	level           The command display type OPERATOR or EXPERT
 	 */
 	//===============================================================
-	public SetPropertyClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
+	public GetLogicalBooleanClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
 	{
 		super(name, in, out, in_comments, out_comments, level);
 	}
@@ -101,44 +105,8 @@ public class SetPropertyClass extends Command implements TangoConst
 	//===============================================================
 	public Any execute(DeviceImpl device,Any in_any) throws DevFailed
 	{
-		Util.out2.println("SetProperty.execute(): arrived");
-		if(name.equals("SetAllFormat"))
-		{
-		    String argin = extract_DevString(in_any);
-		    ((AttributeComposer)(device)).set_all_format(argin);
-		}
-		if(name.equals("SetAllUnit"))
-		{
-		    String argin = extract_DevString(in_any);
-		    ((AttributeComposer)(device)).set_all_unit(argin);
-		}
-		if(name.equals("SetAllMinValue"))
-		{
-		    double argin = extract_DevDouble(in_any);
-		    ((AttributeComposer)(device)).set_all_min_value(argin);
-		}
-		if(name.equals("SetAllMaxValue"))
-		{
-		    double argin = extract_DevDouble(in_any);
-		    ((AttributeComposer)(device)).set_all_max_value(argin);
-		}
-		if(name.equals("SetAllMinAlarm"))
-		{
-		    double argin = extract_DevDouble(in_any);
-		    ((AttributeComposer)(device)).set_all_min_alarm(argin);
-		} 
-		if(name.equals("SetAllMaxAlarm"))
-		{
-		    double argin = extract_DevDouble(in_any);
-		    ((AttributeComposer)(device)).set_all_max_alarm(argin);
-		}
-		if(name.equals("SetAllLabel"))
-		{
-		    String argin = extract_DevString(in_any);
-		    ((AttributeComposer)(device)).set_all_label(argin);
-		}
-		
-		return insert();
+		Util.out2.println("GetTangoQualitiesClass.execute(): arrived");
+		return insert(((AttributeComposer)(device)).get_logical_boolean());
 	}
 
 	//===============================================================
@@ -155,4 +123,4 @@ public class SetPropertyClass extends Command implements TangoConst
 	}
 }
 //-----------------------------------------------------------------------------
-/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/SetPropertyClass.java,v $ */
+/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/GetLogicalBooleanClass.java,v $ */

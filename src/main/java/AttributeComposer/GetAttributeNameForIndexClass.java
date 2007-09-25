@@ -1,5 +1,5 @@
 //+======================================================================
-// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetAttributeNameForIndexClass.java,v $
+// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/GetAttributeNameForIndexClass.java,v $
 //
 // Project:      Tango Device Server
 //
@@ -8,9 +8,12 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.8 $
+// $Revision: 1.1 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.8  2007/03/28 12:21:19  katyho
+// Add the version attribute and use the dtu librairie
+//
 // Revision 1.4  2006/03/17 16:21:33  katyho
 // add new Command
 //
@@ -31,7 +34,7 @@
 
 /**
  * @author	$Author: katyho $
- * @version	$Revision: 1.8 $
+ * @version	$Revision: 1.1 $
  */
 package AttributeComposer;
 
@@ -120,4 +123,4 @@ public class GetAttributeNameForIndexClass extends Command implements TangoConst
 	}
 }
 //-----------------------------------------------------------------------------
-/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetAttributeNameForIndexClass.java,v $ */
+/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/GetAttributeNameForIndexClass.java,v $ */

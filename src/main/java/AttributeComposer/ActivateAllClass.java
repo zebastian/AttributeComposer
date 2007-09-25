@@ -1,5 +1,5 @@
 //+======================================================================
-// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/DeactivateAllClass.java,v $
+// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/ActivateAllClass.java,v $
 //
 // Project:      Tango Device Server
 //
@@ -8,9 +8,12 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.5 $
+// $Revision: 1.1 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.5  2007/03/28 12:21:18  katyho
+// Add the version attribute and use the dtu librairie
+//
 // Revision 1.1  2006/03/17 16:21:33  katyho
 // add new Command
 //
@@ -31,7 +34,7 @@
 
 /**
  * @author	$Author: katyho $
- * @version	$Revision: 1.5 $
+ * @version	$Revision: 1.1 $
  */
 package AttributeComposer;
 
@@ -47,7 +50,7 @@ import fr.esrf.TangoDs.*;
 */
 
 
-public class DeactivateAllClass extends Command implements TangoConst
+public class ActivateAllClass extends Command implements TangoConst
 {
 	//===============================================================
 	/**
@@ -58,7 +61,7 @@ public class DeactivateAllClass extends Command implements TangoConst
 	 *	@param	out	argout type
 	 */
 	//===============================================================
-	public DeactivateAllClass(String name,int in,int out)
+	public ActivateAllClass(String name,int in,int out)
 	{
 		super(name, in, out);
 	}
@@ -74,7 +77,7 @@ public class DeactivateAllClass extends Command implements TangoConst
 	 *	@param	out_comments    argout description
 	 */
 	//===============================================================
-	public DeactivateAllClass(String name,int in,int out, String in_comments, String out_comments)
+	public ActivateAllClass(String name,int in,int out, String in_comments, String out_comments)
 	{
 		super(name, in, out, in_comments, out_comments);
 	}
@@ -90,7 +93,7 @@ public class DeactivateAllClass extends Command implements TangoConst
 	 *	@param	level           The command display type OPERATOR or EXPERT
 	 */
 	//===============================================================
-	public DeactivateAllClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
+	public ActivateAllClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
 	{
 		super(name, in, out, in_comments, out_comments, level);
 	}
@@ -101,8 +104,8 @@ public class DeactivateAllClass extends Command implements TangoConst
 	//===============================================================
 	public Any execute(DeviceImpl device,Any in_any) throws DevFailed
 	{
-		Util.out2.println("DeactivateAllClass.execute(): arrived");
-		((AttributeComposer)(device)).deactivage_all();
+		Util.out2.println("ActivateAllClass.execute(): arrived");
+		((AttributeComposer)(device)).activate_all();
 		return insert();
 	}
 
@@ -120,4 +123,4 @@ public class DeactivateAllClass extends Command implements TangoConst
 	}
 }
 //-----------------------------------------------------------------------------
-/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/DeactivateAllClass.java,v $ */
+/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/ActivateAllClass.java,v $ */

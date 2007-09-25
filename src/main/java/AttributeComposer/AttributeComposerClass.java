@@ -1,5 +1,5 @@
 //+======================================================================
-// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/AttributeComposerClass.java,v $
+// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/AttributeComposerClass.java,v $
 //
 // Project:   	Tango Device Server
 //
@@ -10,9 +10,12 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.12 $
+// $Revision: 1.1 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.12  2007/03/28 12:21:19  katyho
+// Add the version attribute and use the dtu librairie
+//
 // Revision 1.5  2006/05/02 09:54:54  katyho
 // Remove all the command in the clear method
 //

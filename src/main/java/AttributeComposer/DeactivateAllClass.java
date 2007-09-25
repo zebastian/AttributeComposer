@@ -1,5 +1,5 @@
 //+======================================================================
-// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetPriorityForQualityClass.java,v $
+// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/DeactivateAllClass.java,v $
 //
 // Project:      Tango Device Server
 //
@@ -8,10 +8,13 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.7 $
+// $Revision: 1.1 $
 //
 // $Log: not supported by cvs2svn $
-// Revision 1.3  2006/03/17 16:21:33  katyho
+// Revision 1.5  2007/03/28 12:21:19  katyho
+// Add the version attribute and use the dtu librairie
+//
+// Revision 1.1  2006/03/17 16:21:33  katyho
 // add new Command
 //
 //
@@ -31,7 +34,7 @@
 
 /**
  * @author	$Author: katyho $
- * @version	$Revision: 1.7 $
+ * @version	$Revision: 1.1 $
  */
 package AttributeComposer;
 
@@ -47,7 +50,7 @@ import fr.esrf.TangoDs.*;
 */
 
 
-public class GetPriorityForQualityClass extends Command implements TangoConst
+public class DeactivateAllClass extends Command implements TangoConst
 {
 	//===============================================================
 	/**
@@ -58,7 +61,7 @@ public class GetPriorityForQualityClass extends Command implements TangoConst
 	 *	@param	out	argout type
 	 */
 	//===============================================================
-	public GetPriorityForQualityClass(String name,int in,int out)
+	public DeactivateAllClass(String name,int in,int out)
 	{
 		super(name, in, out);
 	}
@@ -74,7 +77,7 @@ public class GetPriorityForQualityClass extends Command implements TangoConst
 	 *	@param	out_comments    argout description
 	 */
 	//===============================================================
-	public GetPriorityForQualityClass(String name,int in,int out, String in_comments, String out_comments)
+	public DeactivateAllClass(String name,int in,int out, String in_comments, String out_comments)
 	{
 		super(name, in, out, in_comments, out_comments);
 	}
@@ -90,7 +93,7 @@ public class GetPriorityForQualityClass extends Command implements TangoConst
 	 *	@param	level           The command display type OPERATOR or EXPERT
 	 */
 	//===============================================================
-	public GetPriorityForQualityClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
+	public DeactivateAllClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
 	{
 		super(name, in, out, in_comments, out_comments, level);
 	}
@@ -101,9 +104,9 @@ public class GetPriorityForQualityClass extends Command implements TangoConst
 	//===============================================================
 	public Any execute(DeviceImpl device,Any in_any) throws DevFailed
 	{
-		Util.out2.println("GetPriorityForQualityClass.execute(): arrived");
-		String argin = extract_DevString(in_any);
-		return insert(((AttributeComposer)(device)).get_priority_for_quality(argin));
+		Util.out2.println("DeactivateAllClass.execute(): arrived");
+		((AttributeComposer)(device)).deactivage_all();
+		return insert();
 	}
 
 	//===============================================================
@@ -120,4 +123,4 @@ public class GetPriorityForQualityClass extends Command implements TangoConst
 	}
 }
 //-----------------------------------------------------------------------------
-/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/GetPriorityForQualityClass.java,v $ */
+/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/DeactivateAllClass.java,v $ */

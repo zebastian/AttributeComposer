@@ -1,5 +1,5 @@
 //+======================================================================
-// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/ActivateAllClass.java,v $
+// $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/SetPropertyClass.java,v $
 //
 // Project:      Tango Device Server
 //
@@ -8,11 +8,14 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.5 $
+// $Revision: 1.1 $
 //
 // $Log: not supported by cvs2svn $
-// Revision 1.1  2006/03/17 16:21:33  katyho
-// add new Command
+// Revision 1.5  2007/03/28 12:21:19  katyho
+// Add the version attribute and use the dtu librairie
+//
+// Revision 1.1  2006/04/25 15:02:49  katyho
+// Update the documentation and Add new functions
 //
 //
 // copyleft :    European Synchrotron Radiation Facility
@@ -31,7 +34,7 @@
 
 /**
  * @author	$Author: katyho $
- * @version	$Revision: 1.5 $
+ * @version	$Revision: 1.1 $
  */
 package AttributeComposer;
 
@@ -47,7 +50,7 @@ import fr.esrf.TangoDs.*;
 */
 
 
-public class ActivateAllClass extends Command implements TangoConst
+public class SetPropertyClass extends Command implements TangoConst
 {
 	//===============================================================
 	/**
@@ -58,7 +61,7 @@ public class ActivateAllClass extends Command implements TangoConst
 	 *	@param	out	argout type
 	 */
 	//===============================================================
-	public ActivateAllClass(String name,int in,int out)
+	public SetPropertyClass(String name,int in,int out)
 	{
 		super(name, in, out);
 	}
@@ -74,7 +77,7 @@ public class ActivateAllClass extends Command implements TangoConst
 	 *	@param	out_comments    argout description
 	 */
 	//===============================================================
-	public ActivateAllClass(String name,int in,int out, String in_comments, String out_comments)
+	public SetPropertyClass(String name,int in,int out, String in_comments, String out_comments)
 	{
 		super(name, in, out, in_comments, out_comments);
 	}
@@ -90,7 +93,7 @@ public class ActivateAllClass extends Command implements TangoConst
 	 *	@param	level           The command display type OPERATOR or EXPERT
 	 */
 	//===============================================================
-	public ActivateAllClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
+	public SetPropertyClass(String name,int in,int out, String in_comments, String out_comments, DispLevel level)
 	{
 		super(name, in, out, in_comments, out_comments, level);
 	}
@@ -101,8 +104,43 @@ public class ActivateAllClass extends Command implements TangoConst
 	//===============================================================
 	public Any execute(DeviceImpl device,Any in_any) throws DevFailed
 	{
-		Util.out2.println("ActivateAllClass.execute(): arrived");
-		((AttributeComposer)(device)).activate_all();
+		Util.out2.println("SetProperty.execute(): arrived");
+		if(name.equals("SetAllFormat"))
+		{
+		    String argin = extract_DevString(in_any);
+		    ((AttributeComposer)(device)).set_all_format(argin);
+		}
+		if(name.equals("SetAllUnit"))
+		{
+		    String argin = extract_DevString(in_any);
+		    ((AttributeComposer)(device)).set_all_unit(argin);
+		}
+		if(name.equals("SetAllMinValue"))
+		{
+		    double argin = extract_DevDouble(in_any);
+		    ((AttributeComposer)(device)).set_all_min_value(argin);
+		}
+		if(name.equals("SetAllMaxValue"))
+		{
+		    double argin = extract_DevDouble(in_any);
+		    ((AttributeComposer)(device)).set_all_max_value(argin);
+		}
+		if(name.equals("SetAllMinAlarm"))
+		{
+		    double argin = extract_DevDouble(in_any);
+		    ((AttributeComposer)(device)).set_all_min_alarm(argin);
+		} 
+		if(name.equals("SetAllMaxAlarm"))
+		{
+		    double argin = extract_DevDouble(in_any);
+		    ((AttributeComposer)(device)).set_all_max_alarm(argin);
+		}
+		if(name.equals("SetAllLabel"))
+		{
+		    String argin = extract_DevString(in_any);
+		    ((AttributeComposer)(device)).set_all_label(argin);
+		}
+		
 		return insert();
 	}
 
@@ -120,4 +158,4 @@ public class ActivateAllClass extends Command implements TangoConst
 	}
 }
 //-----------------------------------------------------------------------------
-/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/ActivateAllClass.java,v $ */
+/* end of $Source: /users/chaize/newsvn/cvsroot/Calculation/AttributeComposer/src/main/java/AttributeComposer/SetPropertyClass.java,v $ */
