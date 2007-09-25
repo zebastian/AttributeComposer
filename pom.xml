@@ -9,7 +9,7 @@
 	<groupId>fr.soleil.deviceservers</groupId>
 	<artifactId>AttributeComposer</artifactId>
 	<name>Attribute Composer</name>
-	<version>3.0.4</version>
+	<version>3.0.5</version>
 	<description>Attribute Composer Device</description>
 	<scm>
 		<connection>
