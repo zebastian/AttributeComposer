@@ -12,9 +12,13 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.1 $
+// $Revision: 1.2 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.1  2007/09/25 16:03:51  katyho
+// Use TangORB-5.1.2 that fixe Bug in Group and problème in java server.
+// Use only group of TangORB
+//
 // Revision 1.13  2006/12/20 17:20:11  katyho
 // Fix Bug when on server is down
 // Use the Dynamic Tango Utilites library
@@ -53,6 +57,7 @@ import org.omg.CORBA.SystemException;
 import org.omg.CORBA.UserException;
 
 import fr.esrf.Tango.AttrQuality;
+import fr.esrf.Tango.AttrWriteType;
 import fr.esrf.Tango.DevError;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.Tango.DevState;
@@ -61,21 +66,25 @@ import fr.esrf.TangoApi.Database;
 import fr.esrf.TangoApi.DbDatum;
 import fr.esrf.TangoApi.DeviceAttribute;
 import fr.esrf.TangoApi.DeviceProxy;
+import fr.esrf.TangoApi.QualityUtilities;
 import fr.esrf.TangoApi.StateUtilities;
 import fr.esrf.TangoApi.Group.Group;
 import fr.esrf.TangoApi.Group.GroupAttrReply;
 import fr.esrf.TangoApi.Group.GroupAttrReplyList;
 import fr.esrf.TangoApi.Group.GroupReply;
 import fr.esrf.TangoApi.Group.GroupReplyList;
+import fr.esrf.TangoDs.Attr;
 import fr.esrf.TangoDs.Attribute;
+import fr.esrf.TangoDs.DefaultDynamicAttribute;
 import fr.esrf.TangoDs.DeviceClass;
 import fr.esrf.TangoDs.DeviceImpl;
 import fr.esrf.TangoDs.Except;
 import fr.esrf.TangoDs.TangoConst;
+import fr.esrf.TangoDs.UserDefaultAttrProp;
 import fr.esrf.TangoDs.Util;
 import fr.esrf.TangoDs.WAttribute;
 import fr.soleil.device.utils.AttributeHelper;
-import fr.soleil.device.utils.QualityUtilities;
+import fr.soleil.device.utils.DynamicAttributesHelper;
 
 
 public class AttributeComposer extends DeviceImpl  implements TangoConst
@@ -90,6 +99,8 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     protected short attr_attributesNumberPriorityList_read[] = new short[1000];
     protected String attr_attributesResultReport_read[] = new String[10000];
     protected boolean attr_booleanResult = false;
+    private boolean attr_isTextTalkerEnable = false;
+    private String attr_lastStateEvent = "";
     //  --------- End of attributes data members ----------
 
     //--------- Start of properties data members ----------
@@ -102,6 +113,10 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     * for ALARM) Call GetTangoQuality to know the list of the Tango Quality order.
     */
     String priorityList[];
+    /**
+     * The text to talk for a State : STATE, text to talk.
+     */
+    String[] textToTalkList;
     /**
      * The logical gates to apply on the list of attribute.
      */
@@ -130,6 +145,14 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      *  The FAULT state
      */
     private DevState faultState = DevState.FAULT;
+    /**
+     * The last DevState
+     */ 
+    private DevState m_lastState = null;
+    /**
+     *  The full name of a TextTalker device (optional)
+     */
+    private String textTalkerDeviceProxy = "";
     
     
     
@@ -149,7 +172,7 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
     /**
      * The table of priority <AttrQuality, Priority>
      */
-    private Hashtable<AttrQuality, Integer> m_priorityTable = new Hashtable<AttrQuality, Integer>();   
+    private Hashtable<AttrQuality, Integer> m_priorityTable = new Hashtable<AttrQuality, Integer>();
     /**
      * The table of the quality and their associated device State 
      */
@@ -171,6 +194,10 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      * the messages are generated during the connexion, read or write instruction
      */
     private Hashtable<String, String> m_attributeResultReportTable = new Hashtable<String, String>();
+    /**
+     * The table of text to talk <DevState, TextToTalk>
+     */
+    private Hashtable<DevState, String> m_textToTalkTable = new Hashtable<DevState, String>();
     
     private Vector<Boolean> m_booleanLogicalVector = new Vector<Boolean>();
     /**
@@ -186,13 +213,21 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      */
     private boolean m_initialized = false;
     /**
+     * A dynamicAttribytesHelper to add and remove dynamic attributes
+     */  
+    private DynamicAttributesHelper m_dynamicAttributeHelper = null;
+    /**
+     * The proxy of device TextTalker
+     */ 
+    private DeviceProxy m_textTalkerProxy = null;
+    /**
      *  SimpleDateFormat to timeStamp the error messages
      */
     public static final SimpleDateFormat m_insertformat  = new SimpleDateFormat ("dd-MM-yyyy HH:mm:ss");
     /**
      * Version of the device
      */
-    private static final String VERSION = "3.0.5";
+    private static final String VERSION = "3.0.6";
 
     
 
@@ -280,6 +315,9 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
                 
                  //Creation of device proxy group
                  groupCreation();
+                 
+                 //Connection to TexTalker
+                 textTalkerConnection();
              }
              catch(Exception exception)
              {
@@ -300,8 +338,20 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      m_attributeValueTable.clear();
      m_attributeQualityTable.clear();
      m_attributeGroupTable.clear();
+     m_textToTalkTable.clear();
+ 
+     //Build the default TextToTalkList property syntax State,TextToTalk
+     textToTalkList = new String[StateUtilities.STATELIST.length];
+     //initialize m_textToTalkTable
+     for (int i = 0; i < StateUtilities.STATELIST.length; i++) {
+         textToTalkList[i] = StateUtilities.STATELIST[i] + ",";
+     }
+     
+     attr_isTextTalkerEnable = false;
+     m_textTalkerProxy = null;
      m_sentValue = Double.NaN;
      m_sentProperty = "";
+     attr_lastStateEvent ="";
      m_initialized = false;
      if(m_valueReader != null)
      {
@@ -310,7 +360,93 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
      }
      m_stateUpdater = null;
      m_valueUpdater = null;
+     
+     try
+     {
+         if(m_dynamicAttributeHelper != null){
+             m_dynamicAttributeHelper.delete_attributes();
+             m_dynamicAttributeHelper = null;
+         }
+     }
+     catch (Exception e) {}
  }
+ 
+ /*
+  * Create TextTalkerProxy
+  */
+private boolean textTalkerConnection()
+{
+    boolean tmpResult = false;
+    if(textTalkerDeviceProxy.trim().equals(""))
+        return tmpResult;
+    
+    getTextTalkerList();
+    
+    if(m_dynamicAttributeHelper == null)
+        m_dynamicAttributeHelper = new DynamicAttributesHelper(this, this.dev_attr);
+    
+    try
+    {
+        //Create attribute
+        Attr attribute_is_textTalker_enable  = new Attr("isTextTalkerEnable", Tango_DEV_BOOLEAN, AttrWriteType.READ_WRITE);
+        UserDefaultAttrProp attribute_is_textTalker_enable_prop = new UserDefaultAttrProp();
+        attribute_is_textTalker_enable_prop.set_label("isTextTalkerEnable");
+        attribute_is_textTalker_enable_prop.set_description("is the interaction with TextTalker device is enable");
+        
+        DefaultDynamicAttribute tmpDynamicAttribute = new DefaultDynamicAttribute(attribute_is_textTalker_enable,attribute_is_textTalker_enable_prop);
+        m_dynamicAttributeHelper.addAttribute(tmpDynamicAttribute);
+        
+        //Create proxy
+        m_textTalkerProxy = new DeviceProxy(textTalkerDeviceProxy.trim());
+        
+    }
+    catch (DevFailed e)
+    {
+        return false;
+    }
+    catch (Exception e)
+    {
+        return false;
+    }
+    return true;
+}
+
+//  =========================================================
+/**
+ * Get the custom text to Talk list
+ */
+//  =========================================================
+private void getTextTalkerList()
+{
+    //Set the non defined state in the property at 0 priority
+    //Enumeration of existing state
+    if(textToTalkList.length == 0)
+        return;
+        
+    String tmpTextToTalk = "";
+    
+    //Get the custum priority
+    for (int i = 0; i < textToTalkList.length; i++)
+    {
+        //System.out.println("textToTalkList["+ i + "]=" + textToTalkList[i]);
+        //Syntax "State","TextToTalk"
+        //So count the token separated by ","
+        StringTokenizer token = new StringTokenizer(textToTalkList[i].trim(), ",");
+        if (token.countTokens() == 2)
+        {
+            //To avoid the the pb of case
+            String tmpState = token.nextToken().trim().toUpperCase();
+            //If the custom state exist
+            if (StateUtilities.isStateExist(tmpState))
+            {
+                tmpTextToTalk = token.nextToken().trim();
+                //System.out.println("Quality=" + tmpQuality);
+                //System.out.println("Text=" + tmpTextToTalk);
+                m_textToTalkTable.put(StateUtilities.getStateForName(tmpState), tmpTextToTalk);
+            }
+        }
+    }
+}
  
  /**
   * Get the custom priority list
@@ -499,10 +635,14 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          "PriorityList",
          "LogicalBoolean",
          "IndividualTimeout",
-         "InternalReadingPeriod"
+         "InternalReadingPeriod",
+         "TextTalkerDeviceProxy",
+         "TextToTalkList"
      };
      
      DbDatum dev_prop[] = get_db_device().get_property(propnames);
+     DbDatum tmpDbDatum = null;
+     
      int i = -1;
      
      // Extract AttributeNameList value
@@ -510,10 +650,10 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          attributeNameList = dev_prop[i].extractStringArray();
      else
      {
-         DbDatum dev_prop1 = get_db_device().get_property("AttributeNameList");
+         tmpDbDatum = get_db_device().get_property("AttributeNameList");
          attributeNameList = new String[] {""};
-         dev_prop1.insert(attributeNameList);
-         get_db_device().put_property(new DbDatum[] { dev_prop1 });
+         tmpDbDatum.insert(attributeNameList);
+         get_db_device().put_property(new DbDatum[] { tmpDbDatum });
      }
      
      //Extract PriorityList value
@@ -521,9 +661,9 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          priorityList = dev_prop[i].extractStringArray();
      else
      {
-         DbDatum dev_prop1 = get_db_device().get_property("PriorityList");
-         dev_prop1.insert(priorityList);
-         get_db_device().put_property(new DbDatum[] {dev_prop1});
+         tmpDbDatum = get_db_device().get_property("PriorityList");
+         tmpDbDatum.insert(priorityList);
+         get_db_device().put_property(new DbDatum[] {tmpDbDatum});
      } 
      
      //Extract LogicalBoolean value
@@ -533,17 +673,17 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          if(logicalBoolean.trim().equals(""))
          {
              logicalBoolean = NONE;
-             DbDatum dev_prop1 = get_db_device().get_property("LogicalBoolean");
-             dev_prop1.insert(logicalBoolean);
-             get_db_device().put_property(new DbDatum[] {dev_prop1});
+             tmpDbDatum = get_db_device().get_property("LogicalBoolean");
+             tmpDbDatum.insert(logicalBoolean);
+             get_db_device().put_property(new DbDatum[] {tmpDbDatum});
          }
      }
      else
      {
-         DbDatum dev_prop1 = get_db_device().get_property("LogicalBoolean");
+         tmpDbDatum = get_db_device().get_property("LogicalBoolean");
          logicalBoolean = NONE;
-         dev_prop1.insert(logicalBoolean);
-         get_db_device().put_property(new DbDatum[] {dev_prop1});
+         tmpDbDatum.insert(logicalBoolean);
+         get_db_device().put_property(new DbDatum[] {tmpDbDatum});
      }
      
      // Extract IndividualTimeout value
@@ -551,9 +691,9 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          this.individualTimeout = dev_prop[i].extractLong();
      else
      {
-         DbDatum dev_prop1 = get_db_device().get_property("IndividualTimeout");
-         dev_prop1.insert(individualTimeout);
-         get_db_device().put_property(new DbDatum[] { dev_prop1 });
+         tmpDbDatum = get_db_device().get_property("IndividualTimeout");
+         tmpDbDatum.insert(individualTimeout);
+         get_db_device().put_property(new DbDatum[] { tmpDbDatum });
      }
      
      // Extract InternalReadingPeriod value
@@ -561,14 +701,74 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          this.internalReadingPeriod = dev_prop[i].extractLong();
      else
      {
-         DbDatum dev_prop1 = get_db_device().get_property("InternalReadingPeriod");
-         dev_prop1.insert(internalReadingPeriod);
-         get_db_device().put_property(new DbDatum[] { dev_prop1 });
+         tmpDbDatum = get_db_device().get_property("InternalReadingPeriod");
+         tmpDbDatum.insert(internalReadingPeriod);
+         get_db_device().put_property(new DbDatum[] { tmpDbDatum });
+     }
+     
+     // Extract TextTalkerDeviceProxy value
+     if (!dev_prop[++i].is_empty())
+         this.textTalkerDeviceProxy = dev_prop[i].extractString();
+     else
+     {
+         tmpDbDatum = get_db_device().get_property("TextTalkerDeviceProxy");
+         tmpDbDatum.insert(textTalkerDeviceProxy);
+         get_db_device().put_property(new DbDatum[] { tmpDbDatum });
+     }
+     
+     //  Extract TextToTalkList value
+     if (!dev_prop[++i].is_empty())
+         textToTalkList = dev_prop[i].extractStringArray();
+     else if(!textTalkerDeviceProxy.trim().equalsIgnoreCase(""))
+     {
+         tmpDbDatum = get_db_device().get_property("TextToTalkList");
+         tmpDbDatum.insert(textToTalkList);
+         get_db_device().put_property(new DbDatum[] { tmpDbDatum });
      }
      
  }
 //=========================================================
+
+ public void set_state(DevState aState){
+     super.set_state(aState);
+     if(m_lastState == null || !m_lastState.equals(aState))
+     {
+         m_lastState = aState;
+         attr_lastStateEvent = StateUtilities.getNameForState(m_lastState)+" at "+m_insertformat.format(new Date());
+         manageTextTalker(aState);
+     }
+ }
  
+//=========================================================
+ /**
+  * manage the textTalker if it is defined.
+  */
+ private void manageTextTalker(DevState aState)
+ {
+     DevState tmpDevState = aState;
+     if(!m_textToTalkTable.containsKey(tmpDevState))
+          return;
+     
+     String tmpTextToTalk = m_textToTalkTable.get(tmpDevState);
+     if(tmpTextToTalk.equals(""))
+         return;
+     try 
+     {
+         if(attr_isTextTalkerEnable && m_textTalkerProxy != null)
+         {
+             DeviceAttribute tmpDeviceAttribute = m_textTalkerProxy.read_attribute("text_to_talk");
+             tmpDeviceAttribute.insert(tmpTextToTalk);
+             m_textTalkerProxy.write_attribute(tmpDeviceAttribute);
+             m_textTalkerProxy.command_inout("DevRun");
+         } 
+     }
+     catch (DevFailed e)
+     {
+         attr_isTextTalkerEnable = false;
+     }
+         
+ }
+//=========================================================  
  @Override
  public DevState dev_state() throws DevFailed
  {
@@ -643,6 +843,12 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
                 else
                     deactivage_all();
                 
+            }
+            
+            if (attr_name == "isTextTalkerEnable")
+            {
+                //  Add your own code here
+                attr_isTextTalkerEnable = att.getBooleanWriteValue();
             }
         }
     }
@@ -719,6 +925,15 @@ public class AttributeComposer extends DeviceImpl  implements TangoConst
          //System.out.println("m_booleanLogicalVector.size()=" + m_booleanLogicalVector.size());
          boolean result = apply_logical_gate(m_booleanLogicalVector);
          attr.set_value(result);
+     }
+     
+     if (attr_name.equals("lastStateEvent")){
+         attr.set_value(attr_lastStateEvent);
+     }
+     
+     if (attr_name.equals("isTextTalkerEnable"))
+     {
+         attr.set_value(attr_isTextTalkerEnable);
      }
      
      else if (attr_name.equals("State"))

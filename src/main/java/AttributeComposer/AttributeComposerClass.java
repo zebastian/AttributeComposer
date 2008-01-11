@@ -10,9 +10,13 @@
 //
 // $Author: katyho $
 //
-// $Revision: 1.1 $
+// $Revision: 1.2 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.1  2007/09/25 16:03:51  katyho
+// Use TangORB-5.1.2 that fixe Bug in Group and problème in java server.
+// Use only group of TangORB
+//
 // Revision 1.12  2007/03/28 12:21:19  katyho
 // Add the version attribute and use the dtu librairie
 //
@@ -309,6 +313,14 @@ public class AttributeComposerClass extends DeviceClass implements TangoConst
         attribute_attributes_result_report_prop.set_description("The result of the writing and reading instruction");
         attribute_attributes_result_report.set_default_properties(attribute_attributes_result_report_prop);
         att_list.addElement(attribute_attributes_result_report);
+        
+        //Attribute : LastStateEvent
+        Attr  state_event_attribute = new Attr("lastStateEvent", Tango_DEV_STRING,AttrWriteType.READ);
+        UserDefaultAttrProp state_event_attribute_prop = new UserDefaultAttrProp();
+        state_event_attribute_prop.set_label("Last State Event");
+        state_event_attribute_prop.set_description("The last state event : STATE at DATE");
+        state_event_attribute.set_default_properties(state_event_attribute_prop);
+        att_list.addElement(state_event_attribute);
         
         //Attribute : State
         Attr  state_attribute = new Attr("State", Tango_DEV_STRING,AttrWriteType.READ);
