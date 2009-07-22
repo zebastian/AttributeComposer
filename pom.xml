@@ -10,7 +10,7 @@
 	<artifactId>AttributeComposer</artifactId>
 	<name>Attribute Composer</name>
 	<description>Attribute Composer Device Server</description>
-	<version>3.0.6</version>
+	<version>3.0.7</version>
 	<scm>
 		<connection>scm:cvs:pserver:anonymous:@tango-ds.cvs.sourceforge.net:/cvsroot/tango-ds:Calculation/AttributeComposer</connection>
 		<developerConnection>scm:cvs:pserver:anonymous:@tango-ds.cvs.sourceforge.net:/cvsroot/tango-ds:Calculation/AttributeComposer</developerConnection>

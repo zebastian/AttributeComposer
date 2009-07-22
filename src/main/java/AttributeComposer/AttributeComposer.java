@@ -10,11 +10,14 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: abeilleg $
+// $Author: katyho $
 //
-// $Revision: 1.3 $
+// $Revision: 1.4 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.3  2009/07/16 13:55:22  abeilleg
+// bug fix for clearAll: use interrupt on thread. Add default ctr on ValueReader. automatic format with eclipse.
+//
 // Revision 1.2  2008/01/11 15:07:17  katyho
 // Interfaçage avec TextTalker
 //
@@ -233,7 +236,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	/**
 	 * Version of the device
 	 */
-	private static final String VERSION = "3.0.6";
+	private static final String VERSION = "3.0.7";
 
 	// =========================================================
 	/**
@@ -356,17 +359,20 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 		m_sentProperty = "";
 		attr_lastStateEvent = "";
 		m_initialized = false;
+		
 		if (m_valueReader != null && m_valueReader.isAlive()) {
 			m_valueReader.interrupt();
 			m_valueReader = null;
 		}
-		// if (m_valueReader != null) {
-		// m_valueReader.destroy();
-		// m_valueReader = null;
-		// }
+		
+		if (m_stateUpdater != null && m_stateUpdater.isAlive()) {
+		    m_stateUpdater.interrupt();
+		    m_stateUpdater = null;
+        }
+		
+		m_valueReader = null;
 		m_stateUpdater = null;
-		m_valueUpdater = null;
-
+	
 		try {
 			if (m_dynamicAttributeHelper != null) {
 				m_dynamicAttributeHelper.delete_attributes();
