@@ -10,11 +10,14 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: katyho $
+// $Author: abeilleg $
 //
-// $Revision: 1.4 $
+// $Revision: 1.5 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.4  2009/07/22 13:19:35  katyho
+// Kill the StateReader thread after each init.
+//
 // Revision 1.3  2009/07/16 13:55:22  abeilleg
 // bug fix for clearAll: use interrupt on thread. Add default ctr on ValueReader. automatic format with eclipse.
 //
@@ -57,6 +60,8 @@ import java.util.Date;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.StringTokenizer;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Vector;
 
 import org.omg.CORBA.SystemException;
@@ -138,7 +143,12 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	/**
 	 * The thread for read the value of attributes
 	 */
-	private ValueReader m_valueReader = null;
+	// private ValueReader m_valueReader = null;
+	/**
+	 * Timer to regularly retrieve attribute values of all managed devices
+	 */
+	private Timer valueReaderTimer;
+
 	/**
 	 * The thread for update the state of device
 	 */
@@ -326,6 +336,12 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 
 					// Connection to TexTalker
 					textTalkerConnection();
+
+					// create a timer to read attributes
+					valueReaderTimer = new Timer("ValueReader Timer "
+							+ internalReadingPeriod);
+					valueReaderTimer.schedule(new ValueReader(), 0,
+							internalReadingPeriod);
 				} catch (final Exception exception) {
 					// exception.printStackTrace();
 					m_initialized = false;
@@ -359,20 +375,17 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 		m_sentProperty = "";
 		attr_lastStateEvent = "";
 		m_initialized = false;
-		
-		if (m_valueReader != null && m_valueReader.isAlive()) {
-			m_valueReader.interrupt();
-			m_valueReader = null;
+
+		if (valueReaderTimer != null) {
+			valueReaderTimer.cancel();
 		}
-		
+
 		if (m_stateUpdater != null && m_stateUpdater.isAlive()) {
-		    m_stateUpdater.interrupt();
-		    m_stateUpdater = null;
-        }
-		
-		m_valueReader = null;
+			m_stateUpdater.interrupt();
+			m_stateUpdater = null;
+		}
 		m_stateUpdater = null;
-	
+
 		try {
 			if (m_dynamicAttributeHelper != null) {
 				m_dynamicAttributeHelper.delete_attributes();
@@ -772,13 +785,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	public DevState dev_state() throws DevFailed {
 		if (m_initialized) {
 			try {
-
-				if (m_valueReader == null || !m_valueReader.isAlive()) {
-					m_valueReader = null;
-					m_valueReader = new ValueReader();
-					m_valueReader.start();
-				}
-
 				if (m_stateUpdater == null || !m_stateUpdater.isAlive()) {
 					m_stateUpdater = null;
 					m_stateUpdater = new StateUpdater();
@@ -1846,147 +1852,139 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	}
 
 	// =========================================================
-	public void valueReader() {
-		String tmpAttributeName = "";
-		boolean tmpHasFailed = false;
-		try {
-			for (final Enumeration enumeration = m_attributeGroupTable.keys(); enumeration
-					.hasMoreElements();) {
-				tmpAttributeName = (String) enumeration.nextElement();
-				final Group tmpGroup = m_attributeGroupTable
-						.get(tmpAttributeName);
-				GroupAttrReplyList tmpResultGroup = null;
-				tmpResultGroup = tmpGroup
-						.read_attribute(tmpAttributeName, true);
-
-				if (tmpResultGroup == null) {
-					tmpHasFailed = true;
-					set_state(faultState);
-					set_status(m_insertformat.format(new Date())
-							+ " : Unexpected Error, cannot read "
-							+ tmpAttributeName
-							+ " relaunch the necessary attributes and make and Init Command");
-					throwDevFailed("Unexpected Error, cannot read "
-							+ tmpAttributeName,
-							"AttributeComposer.valueReader()",
-							"No result = null");
-				}
-
-				final Enumeration enumeration2 = tmpResultGroup.elements();
-				DeviceAttribute tmpDeviceAttribute = null;
-				while (enumeration2.hasMoreElements()) {
-					final GroupAttrReply tmpOneResult = (GroupAttrReply) enumeration2
-							.nextElement();
-					String tmpDeviceName = "";
-					tmpDeviceName = tmpOneResult.dev_name();
-					if (tmpOneResult.has_failed()) {
-						if (tmpOneResult.has_timeout()) {
-							m_attributeResultReportTable.put(tmpDeviceName
-									+ "/" + tmpAttributeName, m_insertformat
-									.format(new Date())
-									+ " : TIME OUT");
-						} else {
-							tmpHasFailed = true;
-							m_attributeResultReportTable.put(tmpDeviceName
-									+ "/" + tmpAttributeName, m_insertformat
-									.format(new Date())
-									+ " : "
-									+ Except.str_exception(new DevFailed(
-											tmpOneResult.get_err_stack())));
-						}
-						m_attributeValueTable.put(tmpDeviceName + "/"
-								+ tmpAttributeName, Double.NaN);
-						m_attributeQualityTable.put(tmpDeviceName + "/"
-								+ tmpAttributeName, AttrQuality.ATTR_INVALID);
-					} else {
-						tmpDeviceAttribute = tmpOneResult.get_data();
-						double tmpReadValue = Double.NaN;
-						AttrQuality tmpQuality = AttrQuality.ATTR_INVALID;
-						try {
-							tmpReadValue = AttributeHelper
-									.extractToDouble(tmpDeviceAttribute);
-							tmpQuality = tmpDeviceAttribute.getQuality();
-						} catch (final DevFailed devFailed) {
-							tmpHasFailed = true;
-							m_attributeResultReportTable.put(tmpDeviceName
-									+ "/" + tmpAttributeName, m_insertformat
-									.format(new Date())
-									+ " : " + Except.str_exception(devFailed));
-						} catch (final Exception exception) {
-							tmpHasFailed = true;
-							m_attributeResultReportTable.put(tmpDeviceName
-									+ "/" + tmpAttributeName, m_insertformat
-									.format(new Date())
-									+ " : " + Except.str_exception(exception));
-						}
-						m_attributeValueTable.put(tmpDeviceName + "/"
-								+ tmpAttributeName, new Double(tmpReadValue));
-						m_attributeQualityTable.put(tmpDeviceName + "/"
-								+ tmpAttributeName, tmpQuality);
-					}
-				}
-				tmpResultGroup.clear();
-				tmpResultGroup = null;
-				// Pb with asynchronised command memory Leak
-				// System.gc();
-			}// end for
-		}// end try
-		catch (final DevFailed devFailed) {
-			set_state(faultState);
-			set_status(m_insertformat.format(new Date())
-					+ " : Unexpected Error, cannot read " + tmpAttributeName
-					+ " : \n" + Except.str_exception(devFailed));
-			// throw devFailed;
-		} catch (final Exception exception) {
-			set_state(faultState);
-			set_status(m_insertformat.format(new Date())
-					+ " : Unexpected Error, cannot read " + tmpAttributeName
-					+ " : \n" + Except.str_exception(exception));
-			// throwDevFailed("Unexpected Error, cannot read " +
-			// tmpAttributeName ,
-			// "AttributeComposer.valueReader()",Except.str_exception(exception));
-		}
-		if (tmpHasFailed) {
-			set_state(faultState);
-			set_status(m_insertformat.format(new Date())
-					+ " : Error see attributesResultReport and make an Init Command");
-			// throwDevFailed("Unexpected Error, cannot read " +
-			// tmpAttributeName ,
-			// "AttributeComposer.valueReader()","See attributesResultReport");
-		}
-	}
-
-	public class ValueReader extends Thread {
-		private boolean isStopped = false;
-
-		public ValueReader() {
-			super("AttributeComposer reader thread");
-		}
-
+	public class ValueReader extends TimerTask {
 		@Override
 		public void run() {
-			try {
-				if (internalReadingPeriod > 0) {
-					while (!isStopped) {
-						Thread.sleep(internalReadingPeriod);
-						valueReader();
-					}
-				} else {
-					valueReader();
-				}
-
-			} catch (final InterruptedException e) {
-				set_state(DevState.DISABLE);
-				set_status(m_insertformat.format(new Date())
-						+ " : Unexpected interruption \n"
-						+ Except.str_exception(e));
-				destroy();
-			}
+			valueReader();
 		}
 
-		@Override
-		public void destroy() {
-			isStopped = true;
+		public void valueReader() {
+			String tmpAttributeName = "";
+			boolean tmpHasFailed = false;
+			try {
+				for (final Enumeration enumeration = m_attributeGroupTable
+						.keys(); enumeration.hasMoreElements();) {
+					tmpAttributeName = (String) enumeration.nextElement();
+					final Group tmpGroup = m_attributeGroupTable
+							.get(tmpAttributeName);
+					GroupAttrReplyList tmpResultGroup = null;
+					tmpResultGroup = tmpGroup.read_attribute(tmpAttributeName,
+							true);
+
+					if (tmpResultGroup == null) {
+						tmpHasFailed = true;
+						set_state(faultState);
+						set_status(m_insertformat.format(new Date())
+								+ " : Unexpected Error, cannot read "
+								+ tmpAttributeName
+								+ " relaunch the necessary attributes and make and Init Command");
+						throwDevFailed("Unexpected Error, cannot read "
+								+ tmpAttributeName,
+								"AttributeComposer.valueReader()",
+								"No result = null");
+					}
+
+					final Enumeration enumeration2 = tmpResultGroup.elements();
+					DeviceAttribute tmpDeviceAttribute = null;
+					while (enumeration2.hasMoreElements()) {
+						final GroupAttrReply tmpOneResult = (GroupAttrReply) enumeration2
+								.nextElement();
+						String tmpDeviceName = "";
+						tmpDeviceName = tmpOneResult.dev_name();
+						if (tmpOneResult.has_failed()) {
+							if (tmpOneResult.has_timeout()) {
+								m_attributeResultReportTable.put(tmpDeviceName
+										+ "/" + tmpAttributeName,
+										m_insertformat.format(new Date())
+												+ " : TIME OUT");
+							} else {
+								tmpHasFailed = true;
+								m_attributeResultReportTable
+										.put(
+												tmpDeviceName + "/"
+														+ tmpAttributeName,
+												m_insertformat
+														.format(new Date())
+														+ " : "
+														+ Except
+																.str_exception(new DevFailed(
+																		tmpOneResult
+																				.get_err_stack())));
+							}
+							m_attributeValueTable.put(tmpDeviceName + "/"
+									+ tmpAttributeName, Double.NaN);
+							m_attributeQualityTable.put(tmpDeviceName + "/"
+									+ tmpAttributeName,
+									AttrQuality.ATTR_INVALID);
+						} else {
+							tmpDeviceAttribute = tmpOneResult.get_data();
+							double tmpReadValue = Double.NaN;
+							AttrQuality tmpQuality = AttrQuality.ATTR_INVALID;
+							try {
+								tmpReadValue = AttributeHelper
+										.extractToDouble(tmpDeviceAttribute);
+								tmpQuality = tmpDeviceAttribute.getQuality();
+							} catch (final DevFailed devFailed) {
+								tmpHasFailed = true;
+								m_attributeResultReportTable
+										.put(
+												tmpDeviceName + "/"
+														+ tmpAttributeName,
+												m_insertformat
+														.format(new Date())
+														+ " : "
+														+ Except
+																.str_exception(devFailed));
+							} catch (final Exception exception) {
+								tmpHasFailed = true;
+								m_attributeResultReportTable
+										.put(
+												tmpDeviceName + "/"
+														+ tmpAttributeName,
+												m_insertformat
+														.format(new Date())
+														+ " : "
+														+ Except
+																.str_exception(exception));
+							}
+							m_attributeValueTable.put(tmpDeviceName + "/"
+									+ tmpAttributeName,
+									new Double(tmpReadValue));
+							m_attributeQualityTable.put(tmpDeviceName + "/"
+									+ tmpAttributeName, tmpQuality);
+						}
+					}
+					tmpResultGroup.clear();
+					tmpResultGroup = null;
+					// Pb with asynchronised command memory Leak
+					// System.gc();
+				}// end for
+			}// end try
+			catch (final DevFailed devFailed) {
+				set_state(faultState);
+				set_status(m_insertformat.format(new Date())
+						+ " : Unexpected Error, cannot read "
+						+ tmpAttributeName + " : \n"
+						+ Except.str_exception(devFailed));
+				// throw devFailed;
+			} catch (final Exception exception) {
+				set_state(faultState);
+				set_status(m_insertformat.format(new Date())
+						+ " : Unexpected Error, cannot read "
+						+ tmpAttributeName + " : \n"
+						+ Except.str_exception(exception));
+				// throwDevFailed("Unexpected Error, cannot read " +
+				// tmpAttributeName ,
+				// "AttributeComposer.valueReader()",Except.str_exception(exception));
+			}
+			if (tmpHasFailed) {
+				set_state(faultState);
+				set_status(m_insertformat.format(new Date())
+						+ " : Error see attributesResultReport and make an Init Command");
+				// throwDevFailed("Unexpected Error, cannot read " +
+				// tmpAttributeName ,
+				// "AttributeComposer.valueReader()","See attributesResultReport");
+			}
 		}
 
 	}
