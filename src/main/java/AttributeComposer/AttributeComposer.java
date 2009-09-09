@@ -10,11 +10,14 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: katyho $
+// $Author: abeilleg $
 //
-// $Revision: 1.6 $
+// $Revision: 1.7 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.6  2009/08/20 15:09:44  katyho
+// Avoid internalPeriod = -1
+//
 // Revision 1.5  2009/07/27 14:23:01  abeilleg
 // enhancement: use Timer to retrieve attribute values
 //
@@ -341,12 +344,12 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 					textTalkerConnection();
 
 					// create a timer to read attributes
-					if(internalReadingPeriod < 0){
-                        internalReadingPeriod = 3000;
-                    }
-					
+					if (internalReadingPeriod < 0) {
+						internalReadingPeriod = 3000;
+					}
+
 					valueReaderTimer = new Timer("ValueReader Timer "
-							+ internalReadingPeriod);
+							+ internalReadingPeriod + " " + device_name);
 					valueReaderTimer.schedule(new ValueReader(), 0,
 							internalReadingPeriod);
 				} catch (final Exception exception) {
