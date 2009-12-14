@@ -10,9 +10,9 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: abeilleg $
+// $Author: katyho $
 //
-// $Revision: 1.7 $
+// $Revision: 1.8 $
 //
 // $Log: not supported by cvs2svn $
 // Revision 1.6  2009/08/20 15:09:44  katyho
@@ -252,7 +252,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	/**
 	 * Version of the device
 	 */
-	private static final String VERSION = "3.0.9";
+	private static final String VERSION = "3.0.10";
 
 	// =========================================================
 	/**
@@ -344,12 +344,12 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 					textTalkerConnection();
 
 					// create a timer to read attributes
-					if (internalReadingPeriod < 0) {
-						internalReadingPeriod = 3000;
-					}
-
+					if(internalReadingPeriod < 0){
+                        internalReadingPeriod = 3000;
+                    }
+					
 					valueReaderTimer = new Timer("ValueReader Timer "
-							+ internalReadingPeriod + " " + device_name);
+							+ internalReadingPeriod);
 					valueReaderTimer.schedule(new ValueReader(), 0,
 							internalReadingPeriod);
 				} catch (final Exception exception) {
@@ -838,8 +838,9 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	public void write_attr_hardware(final Vector attr_list) throws DevFailed {
 		Util.out2.println("In write_attr_hardware for " + attr_list.size()
 				+ " attribute(s)");
-		System.out.println("write_attr_hardware");
-
+		
+		get_logger().info("write_attr_hardware" + attr_list.size() + " attribute(s)");
+	
 		for (int i = 0; i < attr_list.size(); i++) {
 			final WAttribute att = dev_attr
 					.get_w_attr_by_ind(((Integer) attr_list.elementAt(i))
@@ -848,8 +849,9 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 
 			// Switch on attribute name
 			// ---------------------------------
-			if (attr_name.equals("booleanResult")) {
+			if (attr_name.equals("booleanResult")) {			
 				final boolean tmpWriteBoolean = att.getBooleanWriteValue();
+				get_logger().info("write_attr_hardware booleanResult attribute " + tmpWriteBoolean);
 				if (tmpWriteBoolean) {
 					activate_all();
 				} else {
@@ -861,6 +863,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 			if (attr_name == "isTextTalkerEnable") {
 				// Add your own code here
 				attr_isTextTalkerEnable = att.getBooleanWriteValue();
+				get_logger().info("write_attr_hardware isTextTalkerEnable attribute");
 			}
 		}
 	}
@@ -1732,9 +1735,9 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	 */
 	// =========================================================
 	public void activate_all() throws DevFailed {
-		get_logger().info("Entering reset()");
+		get_logger().info("Entering activate_all()");
 		set_all_values(1);
-		get_logger().info("Exiting reset()");
+		get_logger().info("Exiting activate_all()");
 	}
 
 	// =========================================================
@@ -1744,9 +1747,9 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	 */
 	// =========================================================
 	public void deactivage_all() throws DevFailed {
-		get_logger().info("Entering reset()");
+		get_logger().info("Entering deactivage_all()");
 		set_all_values(0);
-		get_logger().info("Exiting reset()");
+		get_logger().info("Exiting deactivage_all()");
 	}
 
 	// =========================================================

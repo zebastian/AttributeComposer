@@ -2,19 +2,19 @@
 <project>
 	<parent>
 		<groupId>fr.soleil</groupId>
-		<artifactId>super-pom</artifactId>
-		<version>1.1</version>
+		<artifactId>super-pom-java</artifactId>
+		<version>RELEASE</version>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>fr.soleil.deviceservers</groupId>
 	<artifactId>AttributeComposer</artifactId>
 	<name>Attribute Composer</name>
 	<description>Attribute Composer Device Server</description>
-	<version>3.0.9</version>
+	<version>3.0.10</version>
 	<scm>
-		<connection>scm:cvs:pserver:anonymous:@tango-ds.cvs.sourceforge.net:/cvsroot/tango-ds:Calculation/AttributeComposer</connection>
-		<developerConnection>scm:cvs:pserver:anonymous:@tango-ds.cvs.sourceforge.net:/cvsroot/tango-ds:Calculation/AttributeComposer</developerConnection>
-		<url>http://tango-ds.cvs.sourceforge.net/tango-ds/Calculation/AttributeComposer</url>
+		<connection>${scm.connection.cvs.tango-ds}:Calculation/AttributeComposer</connection>
+		<developerConnection>${scm.developerConnection.cvs.tango-ds}:Calculation/AttributeComposer</developerConnection>
+		<url>${scm.url.cvs.tango-ds}/Calculation/AttributeComposer</url>
 	</scm>
 	<build>
 		<plugins>
@@ -41,17 +41,14 @@
 		<dependency>
 			<groupId>fr.esrf.tango</groupId>
 			<artifactId>TangORB</artifactId>
-			<version>${TangORB.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>fr.soleil.lib</groupId>
 			<artifactId>dtu</artifactId>
-			<version>${dtu.version}</version>
-		</dependency>
+			</dependency>
 		<dependency>
 			<groupId>log4j</groupId>
 			<artifactId>log4j</artifactId>
-			<version>${log4j.version}</version>
 		</dependency>
 	</dependencies>
 </project>
