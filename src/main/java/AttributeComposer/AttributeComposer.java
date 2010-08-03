@@ -12,9 +12,12 @@
 //
 // $Author: abeilleg $
 //
-// $Revision: 1.10 $
+// $Revision: 1.11 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.10  2010/07/30 15:11:46  abeilleg
+// remove unexport device from main (since it is corrected in Tangorb)
+//
 // Revision 1.9  2010/07/29 16:05:11  katyho
 // Mantis 16507
 //
@@ -332,8 +335,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     public void init_device() throws DevFailed {
 
 	System.out.println("AttributeComposer() create " + device_name);
-	// Clear all the commands and empty the tables
-	clearAll();
+
 	set_state(DevState.STANDBY);
 	// Start the initalisation in a Thread in order to avoid the timeout
 	// problem
@@ -1865,6 +1867,12 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	}
 	System.exit(-1);
 
+    }
+
+    @Override
+    public void delete_device() throws DevFailed {
+	// Clear all the commands and empty the tables
+	clearAll();
     }
 
 }
