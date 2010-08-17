@@ -12,9 +12,12 @@
 //
 // $Author: abeilleg $
 //
-// $Revision: 1.11 $
+// $Revision: 1.12 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.11  2010/08/03 14:05:31  abeilleg
+// add delete_device for tangorb 7.3.2
+//
 // Revision 1.10  2010/07/30 15:11:46  abeilleg
 // remove unexport device from main (since it is corrected in Tangorb)
 //
@@ -71,65 +74,60 @@ package AttributeComposer;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Enumeration;
-import java.util.Hashtable;
-import java.util.ListIterator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.Vector;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.omg.CORBA.SystemException;
 import org.omg.CORBA.UserException;
 
 import fr.esrf.Tango.AttrQuality;
-import fr.esrf.Tango.AttrWriteType;
-import fr.esrf.Tango.DevError;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.Tango.DevState;
-import fr.esrf.Tango.ErrSeverity;
 import fr.esrf.TangoApi.AttributeInfo;
 import fr.esrf.TangoApi.DbDatum;
 import fr.esrf.TangoApi.DeviceAttribute;
 import fr.esrf.TangoApi.DeviceProxy;
 import fr.esrf.TangoApi.QualityUtilities;
 import fr.esrf.TangoApi.StateUtilities;
-import fr.esrf.TangoApi.Group.Group;
 import fr.esrf.TangoApi.Group.GroupAttrReply;
 import fr.esrf.TangoApi.Group.GroupAttrReplyList;
-import fr.esrf.TangoApi.Group.GroupReply;
-import fr.esrf.TangoApi.Group.GroupReplyList;
-import fr.esrf.TangoDs.Attr;
 import fr.esrf.TangoDs.Attribute;
-import fr.esrf.TangoDs.DefaultDynamicAttribute;
 import fr.esrf.TangoDs.DeviceClass;
 import fr.esrf.TangoDs.DeviceImpl;
 import fr.esrf.TangoDs.Except;
 import fr.esrf.TangoDs.TangoConst;
-import fr.esrf.TangoDs.UserDefaultAttrProp;
 import fr.esrf.TangoDs.Util;
 import fr.esrf.TangoDs.WAttribute;
 import fr.soleil.device.utils.AttributeHelper;
 import fr.soleil.device.utils.DynamicAttributesHelper;
+import fr.soleil.tango.clientapi.TangoGroupAttribute;
+import fr.soleil.tango.util.TangoUtil;
 
 public class AttributeComposer extends DeviceImpl implements TangoConst {
 
     protected int state;
 
     // --------- Start of attributes data members ----------
-    protected double attr_spectrumResult_read[] = new double[10000];
-    protected short attr_booleanSpectrum_read[] = new short[10000];
-    protected String attr_attributesQualityList_read[] = new String[1000];
-    protected short attr_attributesNumberPriorityList_read[] = new short[1000];
-    protected String attr_attributesResultReport_read[] = new String[10000];
+    protected double attr_spectrumResult_read[];
+    protected short attr_booleanSpectrum_read[];
+    protected String attr_attributesQualityList_read[];
+    protected short attr_attributesNumberPriorityList_read[];
+    protected String attr_attributesResultReport_read[];
     protected boolean attr_booleanResult = false;
-    private boolean attr_isTextTalkerEnable = false;
     private String attr_lastStateEvent = "";
     // --------- End of attributes data members ----------
 
     // --------- Start of properties data members ----------
+    PriorityQualityManager attrQualityManager;
     /**
      * The list of attribute name used to composed the resum state and the
      * spectrum result.
@@ -141,10 +139,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
      * Quality order.
      */
     String priorityList[];
-    /**
-     * The text to talk for a State : STATE, text to talk.
-     */
-    String[] textToTalkList;
     /**
      * The logical gates to apply on the list of attribute.
      */
@@ -164,16 +158,9 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     /**
      * Timer to regularly retrieve attribute values of all managed devices
      */
-    private Timer valueReaderTimer;
+    ScheduledFuture<?> future;
+    private ScheduledExecutorService executor;
 
-    /**
-     * The thread for update the state of device
-     */
-    private StateUpdater m_stateUpdater = null;
-    /**
-     * The thread for update the value of attributes
-     */
-    private ValueUpdater m_valueUpdater = null;
     /**
      * The FAULT state
      */
@@ -182,10 +169,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
      * The last DevState
      */
     private DevState m_lastState = null;
-    /**
-     * The full name of a TextTalker device (optional)
-     */
-    private String textTalkerDeviceProxy = "";
 
     // --------- End of properties data members ----------
 
@@ -201,62 +184,36 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     private static final String logicalChoices[] = { NONE, OR, AND, XOR };
 
     /**
-     * The table of priority <AttrQuality, Priority>
-     */
-    private final Hashtable<AttrQuality, Integer> m_priorityTable = new Hashtable<AttrQuality, Integer>();
-    /**
-     * The table of the quality and their associated device State
-     */
-    private final Hashtable<AttrQuality, DevState> m_qualityStateTable = new Hashtable<AttrQuality, DevState>();
-    /**
-     * The table of the attribute name and their associated qualities
-     * <attributeName, AttrQuality>
-     */
-    private final Hashtable<String, AttrQuality> m_attributeQualityTable = new Hashtable<String, AttrQuality>();
-    /**
      * The table of the attribute name and their associated proxy group
      * <attributeName, Group>
      */
-    private final Hashtable<String, Group> m_attributeGroupTable = new Hashtable<String, Group>();
+    // private final Map<String, Group> attributeGroupMap = new HashMap<String,
+    // Group>();
+    TangoGroupAttribute attributeGroup;
     /**
      * The table of the attribute name and their associated read values
      * <attributeName, values>
      */
-    private final Hashtable<String, Double> m_attributeValueTable = new Hashtable<String, Double>();
+    private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
     /**
      * The table of the attribute name and their associated message result
      * <attributeName, message report> the messages are generated during the
      * connexion, read or write instruction
      */
-    private final Hashtable<String, String> m_attributeResultReportTable = new Hashtable<String, String>();
-    /**
-     * The table of text to talk <DevState, TextToTalk>
-     */
-    private final Hashtable<DevState, String> m_textToTalkTable = new Hashtable<DevState, String>();
+    private final Map<String, String> attributeResultReportMap = new HashMap<String, String>();
 
-    private final Vector<Boolean> m_booleanLogicalVector = new Vector<Boolean>();
-    /**
-     * The value to send on all the attributes
-     */
-    private double m_sentValue = Double.NaN;
-    /**
-     * The property value to send on all the attributes
-     */
-    private String m_sentProperty = "";
+    private final List<Boolean> booleanLogicalList = new ArrayList<Boolean>();
     /**
      * When the device is well initialized = true
      */
-    private boolean m_initialized = false;
+    private boolean deviceInitialized = false;
     /**
      * A dynamicAttribytesHelper to add and remove dynamic attributes
      */
     private DynamicAttributesHelper m_dynamicAttributeHelper = null;
-    /**
-     * The proxy of device TextTalker
-     */
-    private DeviceProxy m_textTalkerProxy = null;
 
-    private AttributeGroup m_attributeGroup = null;
+    private String[] attributeNameArray;
+    // private AttributeGroup attributeGroup = null;
     /**
      * SimpleDateFormat to timeStamp the error messages
      */
@@ -279,33 +236,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     // =========================================================
     AttributeComposer(final DeviceClass cl, final String s) throws DevFailed {
 	super(cl, s);
-	// Build the m_qualityState table
-	m_qualityStateTable.put(AttrQuality.ATTR_CHANGING, DevState.MOVING);
-	m_qualityStateTable.put(AttrQuality.ATTR_ALARM, DevState.ALARM);
-	m_qualityStateTable.put(AttrQuality.ATTR_WARNING, DevState.ALARM);
-	m_qualityStateTable.put(AttrQuality.ATTR_INVALID, DevState.FAULT);
-	m_qualityStateTable.put(AttrQuality.ATTR_VALID, DevState.ON);
-
-	// Initialize a default priority table if the PriorityList properties is
-	// not defined
-	// Greater the priority number is, greater the priority is important
-	m_priorityTable.put(AttrQuality.ATTR_VALID, new Integer(2));
-	m_priorityTable.put(AttrQuality.ATTR_CHANGING, new Integer(0));
-	m_priorityTable.put(AttrQuality.ATTR_WARNING, new Integer(3));
-	m_priorityTable.put(AttrQuality.ATTR_ALARM, new Integer(3));
-	m_priorityTable.put(AttrQuality.ATTR_INVALID, new Integer(4));
-
-	// build the associated PriorityList property
-	// Syntax "Quality name","PriorityNumber"
-	priorityList = new String[m_priorityTable.size()];
-	final Enumeration<AttrQuality> enumeration = m_priorityTable.keys();
-	int tmpIndex = 0;
-	while (enumeration.hasMoreElements()) {
-	    final AttrQuality key = enumeration.nextElement();
-	    priorityList[tmpIndex] = QualityUtilities.getNameForQuality(key) + ","
-		    + m_priorityTable.get(key);
-	    tmpIndex++;
-	}
 	init_device();
     }
 
@@ -337,77 +267,59 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	System.out.println("AttributeComposer() create " + device_name);
 
 	set_state(DevState.STANDBY);
-	// Start the initalisation in a Thread in order to avoid the timeout
-	// problem
-	new Thread() {
-	    @Override
-	    public void run() {
-		try {
-		    get_device_property();
+	attrQualityManager = new PriorityQualityManager();
+	try {
+	    get_device_property();
 
-		    // get the custom priority
-		    getCustomPriorityList();
+	    // get the custom priority
+	    getCustomPriorityList();
 
-		    // Creation of device proxy group
-		    groupCreation();
+	    // Creation of device proxy group
+	    groupCreation();
 
-		    // Connection to TexTalker
-		    textTalkerConnection();
+	    // create a timer to read attributes
+	    if (internalReadingPeriod < 0) {
+		internalReadingPeriod = 3000;
+	    }
 
-		    // create a timer to read attributes
-		    if (internalReadingPeriod < 0) {
-			internalReadingPeriod = 3000;
-		    }
+	    executor = Executors.newScheduledThreadPool(1);
 
-		    valueReaderTimer = new Timer("ValueReader Timer " + internalReadingPeriod);
-		    valueReaderTimer.schedule(new ValueReader(), 0, internalReadingPeriod);
-		} catch (final Exception exception) {
-		    // exception.printStackTrace();
-		    m_initialized = false;
-		    set_state(faultState);
-		    set_status("Device is not initialzed properly :\n" + exception.getMessage());
-		}
-	    }// End run
-	}.start();
+	    future = executor.scheduleAtFixedRate(new ValueReader(), 0L, internalReadingPeriod,
+		    TimeUnit.MILLISECONDS);
+
+	} catch (final DevFailed exception) {
+	    // exception.printStackTrace();
+	    deviceInitialized = false;
+	    set_state(faultState);
+	    set_status("Device is not initialzed properly :\n"
+		    + TangoUtil.getDevFailedString(exception));
+	    exception.printStackTrace();
+	} catch (final Exception exception) {
+	    // exception.printStackTrace();
+	    deviceInitialized = false;
+	    set_state(faultState);
+	    set_status("Device is not initialzed properly :\n" + exception.getMessage());
+	    exception.printStackTrace();
+	}
+
     }
 
     /*
      * Clear all
      */
     public void clearAll() {
-	if (m_attributeGroup != null) {
-	    m_attributeGroup.clear();
-	    m_attributeGroup = null;
-	}
-
-	m_attributeValueTable.clear();
-	m_attributeQualityTable.clear();
-	m_attributeGroupTable.clear();
-	m_textToTalkTable.clear();
-
-	// Build the default TextToTalkList property syntax State,TextToTalk
-	textToTalkList = new String[StateUtilities.STATELIST.length];
-	// initialize m_textToTalkTable
-	for (int i = 0; i < StateUtilities.STATELIST.length; i++) {
-	    textToTalkList[i] = StateUtilities.STATELIST[i] + ",";
-	}
-
-	attr_isTextTalkerEnable = false;
-	m_textTalkerProxy = null;
-	m_sentValue = Double.NaN;
-	m_sentProperty = "";
+	attributeValueMap.clear();
+	// attributeGroupMap.clear();
+	attributeResultReportMap.clear();
 	attr_lastStateEvent = "";
-	m_initialized = false;
+	deviceInitialized = false;
 
-	if (valueReaderTimer != null) {
-	    valueReaderTimer.cancel();
+	if (future != null) {
+	    future.cancel(true);
 	}
-
-	if (m_stateUpdater != null && m_stateUpdater.isAlive()) {
-	    m_stateUpdater.interrupt();
-	    m_stateUpdater = null;
+	if (executor != null) {
+	    executor.shutdownNow();
 	}
-	m_stateUpdater = null;
 
 	try {
 	    if (m_dynamicAttributeHelper != null) {
@@ -418,92 +330,10 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	}
     }
 
-    /*
-     * Create TextTalkerProxy
-     */
-    private boolean textTalkerConnection() {
-	final boolean tmpResult = false;
-	if (textTalkerDeviceProxy.trim().equals("")) {
-	    return tmpResult;
-	}
-
-	getTextTalkerList();
-
-	if (m_dynamicAttributeHelper == null) {
-	    m_dynamicAttributeHelper = new DynamicAttributesHelper(this, dev_attr);
-	}
-
-	try {
-	    // Create attribute
-	    final Attr attribute_is_textTalker_enable = new Attr("isTextTalkerEnable",
-		    Tango_DEV_BOOLEAN, AttrWriteType.READ_WRITE);
-	    final UserDefaultAttrProp attribute_is_textTalker_enable_prop = new UserDefaultAttrProp();
-	    attribute_is_textTalker_enable_prop.set_label("isTextTalkerEnable");
-	    attribute_is_textTalker_enable_prop
-		    .set_description("is the interaction with TextTalker device is enable");
-
-	    final DefaultDynamicAttribute tmpDynamicAttribute = new DefaultDynamicAttribute(
-		    attribute_is_textTalker_enable, attribute_is_textTalker_enable_prop);
-	    m_dynamicAttributeHelper.addAttribute(tmpDynamicAttribute);
-
-	    // Create proxy
-	    m_textTalkerProxy = new DeviceProxy(textTalkerDeviceProxy.trim());
-
-	} catch (final DevFailed e) {
-	    return false;
-	} catch (final Exception e) {
-	    return false;
-	}
-	return true;
-    }
-
-    // =========================================================
-    /**
-     * Get the custom text to Talk list
-     */
-    // =========================================================
-    private void getTextTalkerList() {
-	// Set the non defined state in the property at 0 priority
-	// Enumeration of existing state
-	if (textToTalkList.length == 0) {
-	    return;
-	}
-
-	String tmpTextToTalk = "";
-
-	// Get the custum priority
-	for (final String element : textToTalkList) {
-	    // System.out.println("textToTalkList["+ i + "]=" +
-	    // textToTalkList[i]);
-	    // Syntax "State","TextToTalk"
-	    // So count the token separated by ","
-	    final StringTokenizer token = new StringTokenizer(element.trim(), ",");
-	    if (token.countTokens() == 2) {
-		// To avoid the the pb of case
-		final String tmpState = token.nextToken().trim().toUpperCase();
-		// If the custom state exist
-		if (StateUtilities.isStateExist(tmpState)) {
-		    tmpTextToTalk = token.nextToken().trim();
-		    // System.out.println("Quality=" + tmpQuality);
-		    // System.out.println("Text=" + tmpTextToTalk);
-		    m_textToTalkTable.put(StateUtilities.getStateForName(tmpState), tmpTextToTalk);
-		}
-	    }
-	}
-    }
-
     /**
      * Get the custom priority list
      */
     private void getCustomPriorityList() {
-	// Set the non defined state in the property at 0 priority
-	// Enumeration of existing state
-	final Enumeration<?> keys = QualityUtilities.getQualityTable().keys();
-	Integer tmpPriority = new Integer(0);
-	while (keys.hasMoreElements()) {
-	    final AttrQuality key = (AttrQuality) keys.nextElement();
-	    m_priorityTable.put(key, tmpPriority);
-	}
 
 	// Get the custom priority
 	for (final String element : priorityList) {
@@ -517,15 +347,11 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 		// If the custom state exist
 		if (QualityUtilities.isQualityExist(tmpQualityName)) {
 		    // The default proprity
-		    try {
-			tmpPriority = Integer.valueOf(token.nextToken().trim());
-		    } catch (final NumberFormatException e) {
-		    }
-
+		    final int tmpPriority = Integer.valueOf(token.nextToken().trim());
 		    // System.out.println("Quality=" + tmpQualityName);
 		    // System.out.println("Priority=" + tmpPriority);
-		    m_priorityTable.put(QualityUtilities.getQualityForName(tmpQualityName),
-			    tmpPriority);
+		    attrQualityManager.putQualityPriority(QualityUtilities
+			    .getQualityForName(tmpQualityName), tmpPriority);
 		}
 	    }
 	}
@@ -534,88 +360,29 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     /**
      * Creation of the group of devices
      */
-    private void groupCreation() throws Exception {
+    private void groupCreation() throws DevFailed {
 	// If no property defined the devices is in STANDBY
 	if (attributeNameList == null || attributeNameList.length == 0
 		|| attributeNameList[0].trim().isEmpty()) {
-	    set_state(DevState.STANDBY);
-	    set_status("No attribute defined");
-	    attr_spectrumResult_read = new double[0];
-	    attr_booleanSpectrum_read = new short[0];
-	    attr_attributesQualityList_read = new String[0];
-	    attr_attributesNumberPriorityList_read = new short[0];
-	    return;
+	    Except.throw_exception("INIT_ERROR", "No attribute defined in property", this
+		    .getClass()
+		    + ".groupCreation");
 	}
-
-	// Initialize all the attributes
-	attr_spectrumResult_read = new double[attributeNameList.length];
-	attr_booleanSpectrum_read = new short[attributeNameList.length];
-	attr_attributesQualityList_read = new String[attributeNameList.length];
-	attr_attributesNumberPriorityList_read = new short[attributeNameList.length];
-	for (int i = 0; i < attr_spectrumResult_read.length; i++) {
-	    attr_spectrumResult_read[i] = Double.NaN;
-	    attr_booleanSpectrum_read[i] = 0;
-	    attr_attributesQualityList_read[i] = QualityUtilities
-		    .getNameForQuality(AttrQuality.ATTR_INVALID)
-		    + "-" + attributeNameList[i];
-	    attr_attributesNumberPriorityList_read[i] = m_priorityTable.get(
-		    AttrQuality.ATTR_INVALID).shortValue();
-	}
-
-	m_attributeGroup = new AttributeGroup("AttributeComposer");
-	m_attributeGroup.add(attributeNameList);
-	m_attributeGroup.set_timeout_millis(individualTimeout);
-
-	// First remove the double entry of proxy thanks to a Vector
-	for (final String element : attributeNameList) {
-	    final String tmpFullAttributeName = element.trim();
-	    String tmpAttributeName = "";
-	    String tmpDeviceName = "";
+	attributeGroup = new TangoGroupAttribute("attribute composer", attributeNameList);
+	attributeNameArray = new String[attributeNameList.length];
+	int i = 0;
+	for (final String attribute : attributeNameList) {
 	    // attribute name = //TANGO:HOST/FAMILY/DOMAIN/MEMBER/ATTRIBUTENAME
 	    // So extract the last index of /
-	    final int pos = tmpFullAttributeName.lastIndexOf("/");
-	    if (pos != -1) {
-		tmpDeviceName = tmpFullAttributeName.substring(0, pos);
-		tmpAttributeName = tmpFullAttributeName.substring(pos + 1, tmpFullAttributeName
-			.length());
-	    } else {
-		m_initialized = false;
-		set_state(faultState);
-		set_status("See the attributesResultReport attribute and make an Init Command");
-		m_attributeResultReportTable.put(tmpFullAttributeName, m_insertformat
-			.format(new Date())
-			+ " : is not an attribute please update the AttributeNameList property");
-		return;
-	    }
-	    try {
-		// If the group does not exists yet
-		if (!m_attributeGroupTable.containsKey(tmpAttributeName)) {
-		    final Group newGroup = new Group(tmpAttributeName);
-		    if (individualTimeout != -1) {
-			newGroup.set_timeout_millis(individualTimeout, true);
-		    }
-		    newGroup.add(tmpDeviceName);
-		    m_attributeGroupTable.put(tmpAttributeName, newGroup);
-		} else {
-		    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-		    tmpGroup.add(tmpDeviceName);
-		}
-	    } catch (final Exception e) {
-		// e.printStackTrace();
-		m_initialized = false;
-		set_state(faultState);
-		set_status("See the attributesResultReport attribute and make an Init Command");
-		m_attributeResultReportTable.put(tmpFullAttributeName, m_insertformat
-			.format(new Date())
-			+ " : Connexion error relaunch it and make an Init Command");
-	    }
+	    final String lastIndexName = attribute.substring(attribute.lastIndexOf("/") + 1);
+	    attributeNameArray[i++] = lastIndexName;
 	}
 
 	// Arrived here the device is initiazed correctly
-	m_initialized = true;
+	deviceInitialized = true;
     }
 
-    /*
+    /**
      * Return the index of a given attribute
      */
     private int get_index_for_attribute(final String aAttributeName) {
@@ -634,10 +401,10 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	return tmpIndex;
     }
 
-    /*
+    /**
      * Return the result of the logical gates on a given vecto
      */
-    private boolean apply_logical_gate(final Vector<Boolean> aBooleanVector) {
+    private boolean apply_logical_gate(final List<Boolean> aBooleanVector) {
 	if (logicalBoolean.equals(NONE)) {
 	    return false;
 	}
@@ -647,7 +414,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	    if (logicalBoolean.equalsIgnoreCase(XOR)) {
 		result = true;
 	    } else {
-		result = m_booleanLogicalVector.elements().nextElement().booleanValue();
+		result = booleanLogicalList.get(0).booleanValue();
 	    }
 	}
 	if (aBooleanVector.size() == 2) {
@@ -662,18 +429,15 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	return result;
     }
 
-    // ===================================================================
     /**
      * Read the device properties from database.
      */
-    // ===================================================================
     public void get_device_property() throws DevFailed {
 	if (!Util._UseDb) {
 	    return;
 	}
 	final String propnames[] = { "AttributeNameList", "PriorityList", "LogicalBoolean",
-		"IndividualTimeout", "InternalReadingPeriod", "TextTalkerDeviceProxy",
-		"TextToTalkList" };
+		"IndividualTimeout", "InternalReadingPeriod" };
 
 	final DbDatum dev_prop[] = get_db_device().get_property(propnames);
 	DbDatum tmpDbDatum = null;
@@ -732,28 +496,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	    tmpDbDatum.insert(internalReadingPeriod);
 	    get_db_device().put_property(new DbDatum[] { tmpDbDatum });
 	}
-
-	// Extract TextTalkerDeviceProxy value
-	if (!dev_prop[++i].is_empty()) {
-	    textTalkerDeviceProxy = dev_prop[i].extractString();
-	} else {
-	    tmpDbDatum = get_db_device().get_property("TextTalkerDeviceProxy");
-	    tmpDbDatum.insert(textTalkerDeviceProxy);
-	    get_db_device().put_property(new DbDatum[] { tmpDbDatum });
-	}
-
-	// Extract TextToTalkList value
-	if (!dev_prop[++i].is_empty()) {
-	    textToTalkList = dev_prop[i].extractStringArray();
-	} else if (!textTalkerDeviceProxy.trim().equalsIgnoreCase("")) {
-	    tmpDbDatum = get_db_device().get_property("TextToTalkList");
-	    tmpDbDatum.insert(textToTalkList);
-	    get_db_device().put_property(new DbDatum[] { tmpDbDatum });
-	}
-
     }
-
-    // =========================================================
 
     @Override
     public void set_state(final DevState aState) {
@@ -762,72 +505,18 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	    m_lastState = aState;
 	    attr_lastStateEvent = StateUtilities.getNameForState(m_lastState) + " at "
 		    + m_insertformat.format(new Date());
-	    manageTextTalker(aState);
 	}
     }
 
-    // =========================================================
-    /**
-     * manage the textTalker if it is defined.
-     */
-    private void manageTextTalker(final DevState aState) {
-	final DevState tmpDevState = aState;
-	if (!m_textToTalkTable.containsKey(tmpDevState)) {
-	    return;
-	}
-
-	final String tmpTextToTalk = m_textToTalkTable.get(tmpDevState);
-	if (tmpTextToTalk.equals("")) {
-	    return;
-	}
-	try {
-	    if (attr_isTextTalkerEnable && m_textTalkerProxy != null) {
-		final DeviceAttribute tmpDeviceAttribute = m_textTalkerProxy
-			.read_attribute("text_to_talk");
-		tmpDeviceAttribute.insert(tmpTextToTalk);
-		m_textTalkerProxy.write_attribute(tmpDeviceAttribute);
-		m_textTalkerProxy.command_inout("DevRun");
-	    }
-	} catch (final DevFailed e) {
-	    attr_isTextTalkerEnable = false;
-	}
-
-    }
-
-    // =========================================================
-    @Override
-    public DevState dev_state() throws DevFailed {
-	if (m_initialized) {
-	    try {
-		if (m_stateUpdater == null || !m_stateUpdater.isAlive()) {
-		    m_stateUpdater = null;
-		    m_stateUpdater = new StateUpdater();
-		    m_stateUpdater.start();
-		}
-	    } catch (final Exception e) {
-		e.printStackTrace();
-		m_initialized = false;
-		set_state(faultState);
-		set_status(m_insertformat.format(new Date())
-			+ " : Fatal Error Execute and Init Command \n" + Except.str_exception(e));
-	    }
-	}
-
-	return super.dev_state();
-    }
-
-    // =========================================================
     /**
      * Method always executed before command execution.
      */
-    // =========================================================
     @Override
     public void always_executed_hook() {
 	get_logger().info("In always_executed_hook method()");
 	get_logger().info("Exiting always_executed_hook method()");
     }
 
-    // ===================================================================
     /**
      * Method called by the write_attributes CORBA operation to write device
      * hardware.
@@ -837,7 +526,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
      *            written
      */
     @SuppressWarnings("unchecked")
-    // ===================================================================
     @Override
     public void write_attr_hardware(final Vector attr_list) throws DevFailed {
 	Util.out2.println("In write_attr_hardware for " + attr_list.size() + " attribute(s)");
@@ -861,12 +549,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 		}
 
 	    }
-
-	    if (attr_name == "isTextTalkerEnable") {
-		// Add your own code here
-		attr_isTextTalkerEnable = att.getBooleanWriteValue();
-		get_logger().info("write_attr_hardware isTextTalkerEnable attribute");
-	    }
 	}
     }
 
@@ -884,22 +566,27 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     @Override
     public void read_attr_hardware(final Vector attr_list) {
 	get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
-	if (m_initialized) {
-	    try {
-
-		if (m_valueUpdater == null || !m_valueUpdater.isAlive()) {
-		    m_valueUpdater = null;
-		    m_valueUpdater = new ValueUpdater();
-		    m_valueUpdater.start();
-		}
-	    } catch (final Exception e) {
-		e.printStackTrace();
-		m_initialized = false;
-		set_state(faultState);
-		set_status(m_insertformat.format(new Date())
-			+ " : Fatal Error Execute and Init Command \n" + Except.str_exception(e));
-	    }
-	}
+	// if (m_initialized) {
+	// // Apply the logical gates on attr_booleanSpectrum_read
+	// booleanLogicalList.clear();
+	// for (final Map.Entry<String, Double> entry :
+	// attributeValueMap.entrySet()) {
+	// final String tmpAttributeName = entry.getKey();
+	// final double tmpReadValue = entry.getValue();
+	// short tmpBooleanShortValue = 0;
+	// boolean tmpBooleanValue = false;
+	// final int tmpIndex = get_index_for_attribute(tmpAttributeName);
+	// if (tmpReadValue == 1) {
+	// tmpBooleanShortValue = 1;
+	// tmpBooleanValue = true;
+	// }
+	// attr_spectrumResult_read[tmpIndex] = tmpReadValue;
+	// attr_booleanSpectrum_read[tmpIndex] = tmpBooleanShortValue;
+	// if (!booleanLogicalList.contains(tmpBooleanValue)) {
+	// booleanLogicalList.add(tmpBooleanValue);
+	// }
+	// }
+	// }
     }
 
     // ===================================================================
@@ -918,61 +605,57 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 
 	// attr_spectrumResult_read update in ValueUpdater Thread
 	if (attr_name == "spectrumResult") {
+	    attr_spectrumResult_read = new double[attributeNameList.length];
+	    for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
+		final String attrName = entry.getKey();
+		final double value = entry.getValue();
+		final int index = get_index_for_attribute(attrName);
+		attr_spectrumResult_read[index] = value;
+	    }
 	    attr.set_value(attr_spectrumResult_read, attr_spectrumResult_read.length);
 	} else if (attr_name == "attributesQualityList") {
+	    attr_attributesQualityList_read = attrQualityManager.getQualityArray();
 	    attr.set_value(attr_attributesQualityList_read, attr_attributesQualityList_read.length);
 	} else if (attr_name == "attributesNumberPriorityList") {
+	    attr_attributesNumberPriorityList_read = attrQualityManager.getQualityNumberArray();
 	    attr.set_value(attr_attributesNumberPriorityList_read,
 		    attr_attributesNumberPriorityList_read.length);
 	} else if (attr_name == "booleanSpectrum") {
+	    attr_booleanSpectrum_read = new short[attributeNameList.length];
+	    for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
+		final String attrName = entry.getKey();
+		final double value = entry.getValue();
+		final int index = get_index_for_attribute(attrName);
+		boolean booleanValue;
+		if (value == 1) {
+		    attr_booleanSpectrum_read[index] = 1;
+		    booleanValue = true;
+		} else {
+		    attr_booleanSpectrum_read[index] = 0;
+		    booleanValue = false;
+		}
+		booleanLogicalList.add(booleanValue);
+	    }
 	    attr.set_value(attr_booleanSpectrum_read, attr_booleanSpectrum_read.length);
 	} else if (attr_name == "booleanResult") {
 	    // m_booleanLogicalVector is update in the ValueUpdater thread
 	    // System.out.println("m_booleanLogicalVector.size()=" +
 	    // m_booleanLogicalVector.size());
-	    final boolean result = apply_logical_gate(m_booleanLogicalVector);
+	    final boolean result = apply_logical_gate(booleanLogicalList);
 	    attr.set_value(result);
-	}
-
-	if (attr_name.equals("lastStateEvent")) {
+	} else if (attr_name.equals("lastStateEvent")) {
 	    attr.set_value(attr_lastStateEvent);
-	}
-
-	if (attr_name.equals("isTextTalkerEnable")) {
-	    attr.set_value(attr_isTextTalkerEnable);
-	}
-
-	else if (attr_name.equals("State")) {
-	    if (!m_initialized) {
-		attr.set_value(StateUtilities.getNameForState(faultState));
-		return;
-	    }
-	    attr.set_value(StateUtilities.getNameForState(get_state()));
-	}
-
-	else if (attr_name.equals("Status")) {
-	    attr.set_value(get_status());
-	}
-
-	// attr_attributesResultReport_read
-	else if (attr_name == "attributesResultReport") {
-	    // Add your own code here
-	    // System.out.println("Read attributesResult m_attributeResultReportTable.size()"
-	    // + m_attributeResultReportTable.size());
-	    attr_attributesResultReport_read = new String[m_attributeResultReportTable.size()];
-	    final Enumeration<String> enumeration = m_attributeResultReportTable.keys();
+	} else if (attr_name == "attributesResultReport") {
+	    attr_attributesResultReport_read = new String[attributeResultReportMap.size()];
 	    int tmpIndex = 0;
-	    while (enumeration.hasMoreElements()) {
-		final String key = enumeration.nextElement();
-		attr_attributesResultReport_read[tmpIndex] = key + "->"
-			+ m_attributeResultReportTable.get(key);
+	    for (final Map.Entry<String, String> entry : attributeResultReportMap.entrySet()) {
+		final String key = entry.getKey();
+		attr_attributesResultReport_read[tmpIndex] = key + "->" + entry.getValue();
 		tmpIndex++;
 	    }
 	    attr.set_value(attr_attributesResultReport_read,
 		    attr_attributesResultReport_read.length);
-	}
-
-	if (attr_name.equals("version")) {
+	} else if (attr_name.equals("version")) {
 	    attr.set_value(VERSION);
 	}
     }
@@ -986,8 +669,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     public short get_priority_for_quality(final String argin) throws DevFailed {
 	short argout = 0;
 	get_logger().info("Entering get_priority_for_state()");
-	final AttrQuality attrQualitytmp = QualityUtilities.getQualityForName(argin);
-	argout = m_priorityTable.get(attrQualitytmp).shortValue();
+	argout = (short) attrQualityManager.getPriorityForQuality(argin);
 	get_logger().info("Exiting get_priority_for_state()");
 	return argout;
     }
@@ -1042,9 +724,10 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	get_logger().info("Entering set_all_values()");
 	// System.out.println(m_initialized);
 	// Do nothing if the device is in error
-	if (!m_initialized || m_attributeGroup == null) {
-	    throwDevFailed("Device is in error and not well initialized", "set_all_values(" + argin
-		    + ")", "The device is not Device is in error and not well initialized");
+	if (!deviceInitialized) {
+	    Except.throw_exception("INIT_ERROR", "Device not correctly initialized", this
+		    .getClass()
+		    + ".set_all_values");
 	    return;
 	}
 
@@ -1054,85 +737,18 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     }
 
     public void write_attribute(final double argin) throws DevFailed {
+
+	get_logger().info("writing " + argin);
 	if (Double.isNaN(argin)) {
 	    return;
 	}
-	final Enumeration<String> enumeration = m_attributeGroupTable.keys();
-	String tmpAttributeName = "";
-	// Read attribute
-	DeviceAttribute tmpDeviceAttribute = null;
-	DevFailed failed = null;
-	while (enumeration.hasMoreElements()) {
-	    tmpAttributeName = enumeration.nextElement();
-	    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-	    final GroupAttrReplyList tmpResultGroup = tmpGroup.read_attribute(tmpAttributeName,
-		    true);
 
-	    // Get the first result only
-	    if (tmpResultGroup != null && !tmpResultGroup.isEmpty()) {
-		final GroupAttrReply tmpOneResult = (GroupAttrReply) tmpResultGroup.elements()
-			.nextElement();
-		if (tmpOneResult.has_failed()) {
-		    failed = new DevFailed(tmpOneResult.get_err_stack());
-		} else {
-		    tmpDeviceAttribute = tmpOneResult.get_data();
-		    // Insert value value
-		    AttributeHelper.insertFromDouble(argin, tmpDeviceAttribute);
-		    // Write value
-		    String tmpDeviceName = "";
-
-		    final GroupReplyList tmpGroupResult = tmpGroup.write_attribute(
-			    tmpDeviceAttribute, true);
-		    // System.out.println("tmpGroupResult"
-		    // + tmpGroupResult.size());
-		    final Enumeration<?> enumeration2 = tmpGroupResult.elements();
-		    while (enumeration2.hasMoreElements()) {
-			final GroupReply tmpGroupReply = (GroupReply) enumeration2.nextElement();
-			tmpDeviceName = tmpGroupReply.dev_name();
-			if (tmpGroupReply.has_failed()) {
-			    failed = new DevFailed(tmpGroupReply.get_err_stack());
-			    m_attributeResultReportTable.put(
-				    tmpDeviceName + "/" + tmpAttributeName, m_insertformat
-					    .format(new Date())
-					    + " : Write " + String.valueOf(argin) + " : FAILED");
-			} else {
-			    m_attributeResultReportTable.put(
-				    tmpDeviceName + "/" + tmpAttributeName, m_insertformat
-					    .format(new Date())
-					    + " : Write " + String.valueOf(argin) + " : SUCCESS");
-			}
-		    }
-		}
-	    }// End if
-	}// End while enumeration
-
-	if (failed != null) {
-	    throw failed;
-	}
+	attributeGroup.insert(new Double(argin).toString());
+	attributeGroup.write();
     }
 
-    public void receiveResponse(final ArrayList<AttributeGroupReply> replyList) throws DevFailed {
-
-	final ListIterator<AttributeGroupReply> listIterator = replyList.listIterator();
-	String attributeName = null;
-	DevFailed hasFailed = null;
-
-	while (listIterator.hasNext()) {
-	    final AttributeGroupReply tmpGroupReply = listIterator.next();
-	    attributeName = tmpGroupReply.getAttributeName();
-	    if (tmpGroupReply.hasFailed()) {
-		hasFailed = tmpGroupReply.getDevFailed();
-		m_attributeResultReportTable.put(attributeName, m_insertformat.format(new Date())
-			+ " : Write " + String.valueOf(m_sentValue) + " : FAILED");
-
-	    } else {
-		m_attributeResultReportTable.put(attributeName, m_insertformat.format(new Date())
-			+ " : Write " + String.valueOf(m_sentValue) + " : SUCCESS");
-	    }
-	}
-	if (hasFailed != null) {
-	    throw hasFailed;
-	}
+    private enum PropertyType {
+	FORMAT, UNIT, ALARM_MIN, ALARM_MAX, MIN_VAL, MAX_VAL, LABEL;
     }
 
     // =========================================================
@@ -1143,57 +759,59 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     // =========================================================
     public void set_all_format(final String argin) throws DevFailed {
 	get_logger().info("Entering set_all_format()");
-	m_sentProperty = argin;
-	// Execute in a Thread to avoid the time out problem
-	new Thread() {
-	    @Override
-	    public void run() {
-		for (final Enumeration<String> enumeration = m_attributeGroupTable.keys(); enumeration
-			.hasMoreElements();) {
-		    final String tmpAttributeName = enumeration.nextElement();
-		    String tmpDeviceName = "";
-		    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-		    try {
-			// Get Each proxy
-			for (int i = 0; i < tmpGroup.get_size(true); i++) {
-			    try {
-				// !! Beware index begin at 1 for group
-				DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i + 1);
-				// System.out.println("tmpDevicePoxy="+tmpDevicePoxy);
-				if (tmpDevicePoxy != null) {
-				    tmpDeviceName = tmpDevicePoxy.get_name();
-				    AttributeInfo tmpAttributeInfo = tmpDevicePoxy
-					    .get_attribute_info(tmpAttributeName);
-				    tmpAttributeInfo.format = m_sentProperty;
-				    tmpDevicePoxy
-					    .set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
-				    tmpAttributeInfo = null;
-				    tmpDevicePoxy = null;
-
-				    // Arrived here the command is SUCCESS
-				    m_attributeResultReportTable.put(tmpDeviceName + "/"
-					    + tmpAttributeName, m_insertformat.format(new Date())
-					    + " : Set Format property to "
-					    + String.valueOf(m_sentProperty) + " : SUCCESS");
-				}
-			    } catch (final Exception exception) {
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : Set Unit property to "
-					+ String.valueOf(m_sentProperty) + " : FAILED");
-			    }
-			}
-		    } catch (final Exception exception) {
-			m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName,
-				m_insertformat.format(new Date())
-					+ " : Unexpected Error Set Format property to "
-					+ String.valueOf(m_sentProperty) + " : "
-					+ exception.getMessage());
-		    }
-		}
-	    }
-	}.start();
+	setAttributeProperty(argin, PropertyType.FORMAT);
 	get_logger().info("Exiting set_all_format()");
+    }
+
+    private void setAttributeProperty(final String property, final PropertyType type)
+	    throws DevFailed {
+	// Get each proxy
+	for (int i = 0; i < attributeNameList.length; i++) {
+	    final DeviceProxy tmpDevicePoxy = attributeGroup.getGroup().getDevice(
+		    attributeNameList[i]);
+	    System.out.println("tmpDevicePoxy=" + tmpDevicePoxy.get_name() + "/"
+		    + attributeNameArray[i]);
+
+	    final String tmpDeviceName = tmpDevicePoxy.get_name();
+	    final AttributeInfo tmpAttributeInfo = tmpDevicePoxy
+		    .get_attribute_info(attributeNameArray[i]);
+	    switch (type) {
+	    case FORMAT:
+		tmpAttributeInfo.format = property;
+		break;
+	    case UNIT:
+		tmpAttributeInfo.unit = property;
+		break;
+	    case ALARM_MIN:
+		tmpAttributeInfo.min_alarm = property;
+		break;
+	    case ALARM_MAX:
+		tmpAttributeInfo.max_alarm = property;
+		break;
+	    case MIN_VAL:
+		tmpAttributeInfo.min_value = property;
+		break;
+	    case MAX_VAL:
+		tmpAttributeInfo.max_value = property;
+		break;
+	    case LABEL:
+		tmpAttributeInfo.label = property;
+		break;
+	    }
+
+	    try {
+		tmpDevicePoxy.set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
+		// Arrived here the command is SUCCESS
+		attributeResultReportMap.put(tmpDeviceName + "/" + attributeNameArray[i],
+			m_insertformat.format(new Date()) + " : Set Format property to " + property
+				+ " : SUCCESS");
+	    } catch (final DevFailed e) {
+		attributeResultReportMap.put(tmpDeviceName + "/" + attributeNameArray[i],
+			m_insertformat.format(new Date()) + " : Set Unit property to " + property
+				+ " : FAILED");
+		throw e;
+	    }
+	}
     }
 
     // =========================================================
@@ -1204,55 +822,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     // =========================================================
     public void set_all_unit(final String argin) throws DevFailed {
 	get_logger().info("Entering set_all_unit()");
-	m_sentProperty = argin;
-	// Execute in a Thread to avoid the time out problem
-	new Thread() {
-	    @Override
-	    public void run() {
-		for (final Enumeration<String> enumeration = m_attributeGroupTable.keys(); enumeration
-			.hasMoreElements();) {
-		    final String tmpAttributeName = enumeration.nextElement();
-		    String tmpDeviceName = "";
-		    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-		    try {
-			// Get Each proxy
-			for (int i = 0; i < tmpGroup.get_size(true); i++) {
-			    try {
-				// !! Beware index begin at 1 for group
-				DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i + 1);
-				if (tmpDevicePoxy != null) {
-				    tmpDeviceName = tmpDevicePoxy.get_name();
-				    AttributeInfo tmpAttributeInfo = tmpDevicePoxy
-					    .get_attribute_info(tmpAttributeName);
-				    tmpAttributeInfo.unit = m_sentProperty;
-				    tmpDevicePoxy
-					    .set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
-				    tmpAttributeInfo = null;
-				    tmpDevicePoxy = null;
-
-				    // Arrived here the command is SUCCESS
-				    m_attributeResultReportTable.put(tmpDeviceName + "/"
-					    + tmpAttributeName, m_insertformat.format(new Date())
-					    + " : Set Unit property to "
-					    + String.valueOf(m_sentProperty) + " : SUCCESS");
-				}
-			    } catch (final Exception exception) {
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : Set Unit property to "
-					+ String.valueOf(m_sentProperty) + " : FAILED");
-			    }
-			}
-		    } catch (final Exception exception) {
-			m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName,
-				m_insertformat.format(new Date())
-					+ " : Unexpected Error Set Unit property to "
-					+ String.valueOf(m_sentProperty) + " : "
-					+ exception.getMessage());
-		    }
-		}
-	    }
-	}.start();
+	setAttributeProperty(argin, PropertyType.UNIT);
 	get_logger().info("Exiting set_all_unit()");
     }
 
@@ -1264,55 +834,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     // =========================================================
     public void set_all_min_value(final double argin) throws DevFailed {
 	get_logger().info("Entering set_all_min_value()");
-	m_sentProperty = String.valueOf(argin);
-	// Execute in a Thread to avoid the time out problem
-	new Thread() {
-	    @Override
-	    public void run() {
-		for (final Enumeration<String> enumeration = m_attributeGroupTable.keys(); enumeration
-			.hasMoreElements();) {
-		    final String tmpAttributeName = enumeration.nextElement();
-		    String tmpDeviceName = "";
-		    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-		    try {
-			// Get Each proxy
-			for (int i = 0; i < tmpGroup.get_size(true); i++) {
-			    try {
-				// !! Beware index begin at 1 for group
-				DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i + 1);
-				if (tmpDevicePoxy != null) {
-				    tmpDeviceName = tmpDevicePoxy.get_name();
-				    AttributeInfo tmpAttributeInfo = tmpDevicePoxy
-					    .get_attribute_info(tmpAttributeName);
-				    tmpAttributeInfo.min_value = m_sentProperty;
-				    tmpDevicePoxy
-					    .set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
-				    tmpAttributeInfo = null;
-				    tmpDevicePoxy = null;
-
-				    // Arrived here the command is SUCCESS
-				    m_attributeResultReportTable.put(tmpDeviceName + "/"
-					    + tmpAttributeName, m_insertformat.format(new Date())
-					    + " : Set Minimum Value property to "
-					    + String.valueOf(m_sentProperty) + " : SUCCESS");
-				}
-			    } catch (final Exception exception) {
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : Set Minimum Value property to "
-					+ String.valueOf(m_sentProperty) + " : FAILED");
-			    }
-			}
-		    } catch (final Exception exception) {
-			m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName,
-				m_insertformat.format(new Date())
-					+ " : Unexpected Error Set Unit property to "
-					+ String.valueOf(m_sentProperty) + " : "
-					+ exception.getMessage());
-		    }
-		}
-	    }
-	}.start();
+	setAttributeProperty(String.valueOf(argin), PropertyType.MIN_VAL);
 	get_logger().info("Exiting set_all_min_value()");
     }
 
@@ -1324,55 +846,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     // =========================================================
     public void set_all_max_value(final double argin) throws DevFailed {
 	get_logger().info("Entering set_all_max_value()");
-	m_sentProperty = String.valueOf(argin);
-	// Execute in a Thread to avoid the time out problem
-	new Thread() {
-	    @Override
-	    public void run() {
-		for (final Enumeration<String> enumeration = m_attributeGroupTable.keys(); enumeration
-			.hasMoreElements();) {
-		    final String tmpAttributeName = enumeration.nextElement();
-		    String tmpDeviceName = "";
-		    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-		    try {
-			// Get Each proxy
-			for (int i = 0; i < tmpGroup.get_size(true); i++) {
-			    try {
-				// !! Beware index begin at 1 for group
-				DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i + 1);
-				if (tmpDevicePoxy != null) {
-				    tmpDeviceName = tmpDevicePoxy.get_name();
-				    AttributeInfo tmpAttributeInfo = tmpDevicePoxy
-					    .get_attribute_info(tmpAttributeName);
-				    tmpAttributeInfo.max_value = m_sentProperty;
-				    tmpDevicePoxy
-					    .set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
-				    tmpAttributeInfo = null;
-				    tmpDevicePoxy = null;
-
-				    // Arrived here the command is SUCCESS
-				    m_attributeResultReportTable.put(tmpDeviceName + "/"
-					    + tmpAttributeName, m_insertformat.format(new Date())
-					    + " : Set Maximum Value property to "
-					    + String.valueOf(m_sentProperty) + " : SUCCESS");
-				}
-			    } catch (final Exception exception) {
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : Set Maximum Value property to "
-					+ String.valueOf(m_sentProperty) + " : FAILED");
-			    }
-			}
-		    } catch (final Exception exception) {
-			m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName,
-				m_insertformat.format(new Date())
-					+ " : Unexpected Error Set Maximum Value property to "
-					+ String.valueOf(m_sentProperty) + " : "
-					+ exception.getMessage());
-		    }
-		}
-	    }
-	}.start();
+	setAttributeProperty(String.valueOf(argin), PropertyType.MAX_VAL);
 	get_logger().info("Exiting set_all_max_value()");
     }
 
@@ -1384,57 +858,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     // =========================================================
     public void set_all_min_alarm(final double argin) throws DevFailed {
 	get_logger().info("Entering set_all_min_alarm()");
-	m_sentProperty = String.valueOf(argin);
-	// Execute in a Thread to avoid the time out problem
-	new Thread() {
-	    @Override
-	    public void run() {
-		for (final Enumeration<String> enumeration = m_attributeGroupTable.keys(); enumeration
-			.hasMoreElements();) {
-		    final String tmpAttributeName = enumeration.nextElement();
-		    String tmpDeviceName = "";
-		    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-		    try {
-			// Get Each proxy
-			for (int i = 0; i < tmpGroup.get_size(true); i++) {
-			    try {
-				// !! Beware index begin at 1 for group
-				DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i + 1);
-				if (tmpDevicePoxy != null) {
-				    tmpDeviceName = tmpDevicePoxy.get_name();
-				    AttributeInfo tmpAttributeInfo = tmpDevicePoxy
-					    .get_attribute_info(tmpAttributeName);
-				    tmpAttributeInfo.min_alarm = m_sentProperty;
-				    tmpDevicePoxy
-					    .set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
-				    tmpAttributeInfo = null;
-				    tmpDevicePoxy = null;
-
-				    // Arrived here the command is SUCCESS
-				    m_attributeResultReportTable.put(tmpDeviceName + "/"
-					    + tmpAttributeName, m_insertformat.format(new Date())
-					    + " : Set Minimum Alarm Value property to "
-					    + String.valueOf(m_sentProperty) + " : SUCCESS");
-				}
-			    } catch (final Exception exception) {
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : Set Minimum Alarm Value property to "
-					+ String.valueOf(m_sentProperty) + " : FAILED");
-			    }
-			}
-		    } catch (final Exception exception) {
-			m_attributeResultReportTable
-				.put(
-					tmpDeviceName + "/" + tmpAttributeName,
-					m_insertformat.format(new Date())
-						+ " : Unexpected Error Set Minimum Alarm Value property to "
-						+ String.valueOf(m_sentProperty) + " : "
-						+ exception.getMessage());
-		    }
-		}
-	    }
-	}.start();
+	setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MIN);
 	get_logger().info("Exiting set_all_min_alarm()");
     }
 
@@ -1446,57 +870,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     // =========================================================
     public void set_all_max_alarm(final double argin) throws DevFailed {
 	get_logger().info("Entering set_all_max_alarm()");
-	m_sentProperty = String.valueOf(argin);
-	// Execute in a Thread to avoid the time out problem
-	new Thread() {
-	    @Override
-	    public void run() {
-		for (final Enumeration<String> enumeration = m_attributeGroupTable.keys(); enumeration
-			.hasMoreElements();) {
-		    final String tmpAttributeName = enumeration.nextElement();
-		    String tmpDeviceName = "";
-		    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-		    try {
-			// Get Each proxy
-			for (int i = 0; i < tmpGroup.get_size(true); i++) {
-			    try {
-				// !! Beware index begin at 1 for group
-				DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i + 1);
-				if (tmpDevicePoxy != null) {
-				    tmpDeviceName = tmpDevicePoxy.get_name();
-				    AttributeInfo tmpAttributeInfo = tmpDevicePoxy
-					    .get_attribute_info(tmpAttributeName);
-				    tmpAttributeInfo.max_alarm = m_sentProperty;
-				    tmpDevicePoxy
-					    .set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
-				    tmpAttributeInfo = null;
-				    tmpDevicePoxy = null;
-
-				    // Arrived here the command is SUCCESS
-				    m_attributeResultReportTable.put(tmpDeviceName + "/"
-					    + tmpAttributeName, m_insertformat.format(new Date())
-					    + " : Set Maximum Alarm Value property to "
-					    + String.valueOf(m_sentProperty) + " : SUCCESS");
-				}
-			    } catch (final Exception exception) {
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : Set Maximum Alarm Value property to "
-					+ String.valueOf(m_sentProperty) + " : FAILED");
-			    }
-			}
-		    } catch (final Exception exception) {
-			m_attributeResultReportTable
-				.put(
-					tmpDeviceName + "/" + tmpAttributeName,
-					m_insertformat.format(new Date())
-						+ " : Unexpected Error Set Maximum Alarm Value property to "
-						+ String.valueOf(m_sentProperty) + " : "
-						+ exception.getMessage());
-		    }
-		}
-	    }
-	}.start();
+	setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MAX);
 	get_logger().info("Exiting set_all_max_alarm()");
     }
 
@@ -1508,347 +882,105 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     // =========================================================
     public void set_all_label(final String argin) throws DevFailed {
 	get_logger().info("Entering set_all_label()");
-	m_sentProperty = argin;
-	// Execute in a Thread to avoid the time out problem
-	new Thread() {
-	    @Override
-	    public void run() {
-		for (final Enumeration<String> enumeration = m_attributeGroupTable.keys(); enumeration
-			.hasMoreElements();) {
-		    final String tmpAttributeName = enumeration.nextElement();
-		    String tmpDeviceName = "";
-		    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-		    try {
-			// Get Each proxy
-			for (int i = 0; i < tmpGroup.get_size(true); i++) {
-			    try {
-				// !! Beware index begin at 1 for group
-				DeviceProxy tmpDevicePoxy = tmpGroup.get_device(i + 1);
-				if (tmpDevicePoxy != null) {
-				    tmpDeviceName = tmpDevicePoxy.get_name();
-				    AttributeInfo tmpAttributeInfo = tmpDevicePoxy
-					    .get_attribute_info(tmpAttributeName);
-				    tmpAttributeInfo.label = m_sentProperty;
-				    tmpDevicePoxy
-					    .set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
-				    tmpAttributeInfo = null;
-				    tmpDevicePoxy = null;
-
-				    // Arrived here the command is SUCCESS
-				    m_attributeResultReportTable.put(tmpDeviceName + "/"
-					    + tmpAttributeName, m_insertformat.format(new Date())
-					    + " : Set Label property to "
-					    + String.valueOf(m_sentProperty) + " : SUCCESS");
-				}
-			    } catch (final Exception exception) {
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : Set Label property to "
-					+ String.valueOf(m_sentProperty) + " : FAILED");
-			    }
-			}
-		    } catch (final Exception exception) {
-			m_attributeResultReportTable.put(tmpDeviceName + "/" + tmpAttributeName,
-				m_insertformat.format(new Date())
-					+ " : Unexpected Error Set Label property to "
-					+ String.valueOf(m_sentProperty) + " : "
-					+ exception.getMessage());
-		    }
-		}
-	    }
-	}.start();
+	setAttributeProperty(argin, PropertyType.LABEL);
 	get_logger().info("Exiting set_all_label()");
     }
 
-    // =========================================================
     /**
      * Execute command "ActivateAll" on device. This command write 1 or true on
      * all the attributes
      */
-    // =========================================================
     public void activate_all() throws DevFailed {
 	get_logger().info("Entering activate_all()");
 	set_all_values(1);
 	get_logger().info("Exiting activate_all()");
     }
 
-    // =========================================================
     /**
      * Execute command "DeactivateAll" on device. This command write 0 or false
      * on all the attributes
      */
-    // =========================================================
     public void deactivage_all() throws DevFailed {
 	get_logger().info("Entering deactivage_all()");
 	set_all_values(0);
 	get_logger().info("Exiting deactivage_all()");
     }
 
-    // =========================================================
-    /*
-     * This Thread read the quality of all attribute
-     */
+    public class ValueReader implements Runnable {
 
-    // =========================================================
-    /*
-     * This Thread compute a resum state for the device
-     */
-    public class StateUpdater extends Thread {
-	@Override
-	public void run() {
-	    try {
-		// Hastable used to delete the double entry of quality
-		// <Quality,Priority>
-		final Hashtable<AttrQuality, Integer> tmpResumQualityTable = new Hashtable<AttrQuality, Integer>();
-		// Hastable used to delete the double entry of priority
-		// <Priority,Quality>
-		final Hashtable<Integer, AttrQuality> tmpResumPriorityTable = new Hashtable<Integer, AttrQuality>();
-
-		final Enumeration<String> enumeration = m_attributeQualityTable.keys();
-		while (enumeration.hasMoreElements()) {
-		    final String tmpAttributeName = enumeration.nextElement();
-		    AttrQuality attrQualityTmp = AttrQuality.ATTR_INVALID;
-		    if (m_attributeQualityTable.containsKey(tmpAttributeName)) {
-			attrQualityTmp = m_attributeQualityTable.get(tmpAttributeName);
-		    }
-
-		    final int tmpIndex = get_index_for_attribute(tmpAttributeName);
-		    if (tmpIndex != -1) {
-			attr_attributesNumberPriorityList_read[tmpIndex] = m_priorityTable.get(
-				attrQualityTmp).shortValue();
-			attr_attributesQualityList_read[tmpIndex] = QualityUtilities
-				.getNameForQuality(attrQualityTmp)
-				+ "-" + attributeNameList[tmpIndex];
-			// delete the double entry for a quality
-			if (!tmpResumQualityTable.containsKey(attrQualityTmp)
-				&& !tmpResumQualityTable.contains(m_priorityTable
-					.get(attrQualityTmp))) {
-			    tmpResumQualityTable.put(attrQualityTmp, m_priorityTable
-				    .get(attrQualityTmp));
-			}
-		    }
-		}
-
-		// If the device is in error dont compute the resum state
-		if (!m_initialized) {
-		    // System.out.println("m_initialized=" + m_initialized);
-		    tmpResumQualityTable.clear();
-		    return;
-		}
-
-		// System.out.println("tmpResumQualityTable=" +
-		// tmpResumQualityTable.size());
-		// Compute the state of device
-		if (tmpResumQualityTable.size() == 0) {
-		    return;
-		} else if (tmpResumQualityTable.size() == 1) {
-		    final AttrQuality tmpAttributeQuality = tmpResumQualityTable.keys()
-			    .nextElement();
-		    set_state(m_qualityStateTable.get(tmpAttributeQuality));
-		    set_status("All the attributes are in "
-			    + QualityUtilities.getNameForQuality(tmpAttributeQuality) + " quality.");
-		}
-		// Check the prority of qualities
-		else {
-		    AttrQuality tmpAttributeQuality;
-		    Integer tmpPriority;
-		    for (final Enumeration<?> enumeration2 = tmpResumQualityTable.keys(); enumeration2
-			    .hasMoreElements(); tmpResumPriorityTable.put(tmpPriority,
-			    tmpAttributeQuality)) {
-			tmpAttributeQuality = (AttrQuality) enumeration2.nextElement();
-			tmpPriority = tmpResumQualityTable.get(tmpAttributeQuality);
-		    }
-		    // Sort the quality by priority
-		    final Object objList[] = tmpResumQualityTable.values().toArray();
-		    Arrays.sort(objList);
-		    // get the greatest priority
-		    tmpAttributeQuality = tmpResumPriorityTable.get(objList[objList.length - 1]);
-		    final DevState tmpDeviceState = m_qualityStateTable.get(tmpAttributeQuality);
-		    set_state(tmpDeviceState);
-		    set_status("One of the attribute is in "
-			    + QualityUtilities.getNameForQuality(tmpAttributeQuality) + " quality.");
-		}
-
-		// Clear the table
-		tmpResumQualityTable.clear();
-		tmpResumPriorityTable.clear();
-	    } catch (final Exception exception) {
-		// exception.printStackTrace();
-		m_initialized = false;
-		set_state(faultState);
-		set_status(m_insertformat.format(new Date())
-			+ " : Unexpected Error, cannot compute a resum State for the device\n"
-			+ exception.getMessage());
-		return;
-	    }
-	}
-    }
-
-    // =========================================================
-    public class ValueReader extends TimerTask {
 	@Override
 	public void run() {
 	    valueReader();
 	}
 
 	public void valueReader() {
-	    String tmpAttributeName = "";
-	    boolean tmpHasFailed = false;
+
+	    GroupAttrReplyList resultGroup = null;
+	    // read attributes
 	    try {
-		for (final Enumeration<String> enumeration = m_attributeGroupTable.keys(); enumeration
-			.hasMoreElements();) {
-		    tmpAttributeName = enumeration.nextElement();
-		    final Group tmpGroup = m_attributeGroupTable.get(tmpAttributeName);
-		    GroupAttrReplyList tmpResultGroup = null;
-		    tmpResultGroup = tmpGroup.read_attribute(tmpAttributeName, true);
-
-		    if (tmpResultGroup == null) {
-			tmpHasFailed = true;
-			set_state(faultState);
-			set_status(m_insertformat.format(new Date())
-				+ " : Unexpected Error, cannot read " + tmpAttributeName
-				+ " relaunch the necessary attributes and make and Init Command");
-			throwDevFailed("Unexpected Error, cannot read " + tmpAttributeName,
-				"AttributeComposer.valueReader()", "No result = null");
-		    }
-
-		    final Enumeration<?> enumeration2 = tmpResultGroup.elements();
-		    DeviceAttribute tmpDeviceAttribute = null;
-		    while (enumeration2.hasMoreElements()) {
-			final GroupAttrReply tmpOneResult = (GroupAttrReply) enumeration2
-				.nextElement();
-			String tmpDeviceName = "";
-			tmpDeviceName = tmpOneResult.dev_name();
-			if (tmpOneResult.has_failed()) {
-			    if (tmpOneResult.has_timeout()) {
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : TIME OUT");
-			    } else {
-				tmpHasFailed = true;
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : "
-					+ Except.str_exception(new DevFailed(tmpOneResult
-						.get_err_stack())));
-			    }
-			    m_attributeValueTable.put(tmpDeviceName + "/" + tmpAttributeName,
-				    Double.NaN);
-			    m_attributeQualityTable.put(tmpDeviceName + "/" + tmpAttributeName,
-				    AttrQuality.ATTR_INVALID);
-			} else {
-			    tmpDeviceAttribute = tmpOneResult.get_data();
-			    double tmpReadValue = Double.NaN;
-			    AttrQuality tmpQuality = AttrQuality.ATTR_INVALID;
-			    try {
-				tmpReadValue = AttributeHelper.extractToDouble(tmpDeviceAttribute);
-				tmpQuality = tmpDeviceAttribute.getQuality();
-			    } catch (final DevFailed devFailed) {
-				tmpHasFailed = true;
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : " + Except.str_exception(devFailed));
-			    } catch (final Exception exception) {
-				tmpHasFailed = true;
-				m_attributeResultReportTable.put(tmpDeviceName + "/"
-					+ tmpAttributeName, m_insertformat.format(new Date())
-					+ " : " + Except.str_exception(exception));
-			    }
-			    m_attributeValueTable.put(tmpDeviceName + "/" + tmpAttributeName,
-				    new Double(tmpReadValue));
-			    m_attributeQualityTable.put(tmpDeviceName + "/" + tmpAttributeName,
-				    tmpQuality);
-			}
-		    }
-		    tmpResultGroup.clear();
-		    tmpResultGroup = null;
-		    // Pb with asynchronised command memory Leak
-		    // System.gc();
-		}// end for
-	    }// end try
-	    catch (final DevFailed devFailed) {
+		resultGroup = attributeGroup.read();
+	    } catch (final DevFailed devFailed) {
 		set_state(faultState);
-		set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot read "
-			+ tmpAttributeName + " : \n" + Except.str_exception(devFailed));
-		// throw devFailed;
+		set_status(m_insertformat.format(new Date())
+			+ " : Unexpected Error, cannot read: \n"
+			+ TangoUtil.getDevFailedString(devFailed));
 	    } catch (final Exception exception) {
 		set_state(faultState);
-		set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot read "
-			+ tmpAttributeName + " : \n" + Except.str_exception(exception));
-		// throwDevFailed("Unexpected Error, cannot read " +
-		// tmpAttributeName ,
-		// "AttributeComposer.valueReader()",Except.str_exception(exception));
+		set_status(m_insertformat.format(new Date())
+			+ " : Unexpected Error, cannot read: \n" + Except.str_exception(exception));
 	    }
+
+	    // extract results
+	    boolean tmpHasFailed = false;
+	    final Enumeration<?> enumeration2 = resultGroup.elements();
+	    DeviceAttribute tmpDeviceAttribute = null;
+	    while (enumeration2.hasMoreElements()) {
+		final GroupAttrReply tmpOneResult = (GroupAttrReply) enumeration2.nextElement();
+		String tmpDeviceName = "";
+		tmpDeviceName = tmpOneResult.dev_name();
+		final String attrName = tmpOneResult.obj_name();
+		AttrQuality tmpQuality = AttrQuality.ATTR_INVALID;
+		try {
+		    tmpDeviceAttribute = tmpOneResult.get_data();
+		    double tmpReadValue = Double.NaN;
+		    tmpReadValue = AttributeHelper.extractToDouble(tmpDeviceAttribute);
+		    tmpQuality = tmpDeviceAttribute.getQuality();
+		    attributeValueMap.put(tmpDeviceName + "/" + attrName, tmpReadValue);
+		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName,
+			    tmpQuality);
+		} catch (final DevFailed devFailed) {
+		    tmpHasFailed = true;
+		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName,
+			    tmpQuality);
+		    attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat
+			    .format(new Date())
+			    + " : " + TangoUtil.getDevFailedString(devFailed));
+		} catch (final Exception exception) {
+		    tmpHasFailed = true;
+		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName,
+			    tmpQuality);
+		    attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat
+			    .format(new Date())
+			    + " : " + Except.str_exception(exception));
+		}
+	    }
+
+	    set_state(attrQualityManager.getHighestPriorityState());
+	    set_status("At least one attribute is of quality "
+		    + attrQualityManager.getHighestPriorityQualityAsString());
+
 	    if (tmpHasFailed) {
 		set_state(faultState);
 		set_status(m_insertformat.format(new Date())
-			+ " : Error see attributesResultReport and make an Init Command");
-		// throwDevFailed("Unexpected Error, cannot read " +
-		// tmpAttributeName ,
-		// "AttributeComposer.valueReader()","See attributesResultReport");
-	    }
-	}
-
-    }
-
-    // =========================================================
-    public class ValueUpdater extends Thread {
-	@Override
-	public void run() {
-	    // System.out.println("ValueUpdater");
-
-	    String tmpAttributeName = "";
-	    try {
-		final Enumeration<String> enumeration = m_attributeValueTable.keys();
-		// Apply the logical gates on attr_booleanSpectrum_read
-		m_booleanLogicalVector.clear();
-		while (enumeration.hasMoreElements()) {
-		    tmpAttributeName = enumeration.nextElement();
-		    final double tmpReadValue = m_attributeValueTable.get(tmpAttributeName)
-			    .doubleValue();
-		    short tmpBooleanShortValue = 0;
-		    Boolean tmpBooleanValue = Boolean.FALSE;
-		    final int tmpIndex = get_index_for_attribute(tmpAttributeName);
-		    if (tmpReadValue == 1) {
-			tmpBooleanShortValue = 1;
-			tmpBooleanValue = Boolean.TRUE;
-		    }
-		    attr_spectrumResult_read[tmpIndex] = tmpReadValue;
-		    attr_booleanSpectrum_read[tmpIndex] = tmpBooleanShortValue;
-		    if (!m_booleanLogicalVector.contains(tmpBooleanValue)) {
-			m_booleanLogicalVector.add(tmpBooleanValue);
-		    }
-		}
-	    } catch (final Exception e) {
-		// e.printStackTrace();
-		m_initialized = false;
-		set_state(faultState);
-		set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot read "
-			+ tmpAttributeName
-			+ " relaunch the necessary attributes and make and Init Command : \n"
-			+ Except.str_exception(e));
-		return;
+			+ " : Error see attributesResultReport");
 	    }
 	}
     }
 
-    // =========================================================
-    private void throwDevFailed(final String description, final String origin, final String reason)
-	    throws DevFailed {
-	final DevError tmpDevError = new DevError();
-	tmpDevError.severity = ErrSeverity.ERR;
-	tmpDevError.desc = description;
-	tmpDevError.origin = origin;
-	tmpDevError.reason = reason;
-	throw new DevFailed(new DevError[] { tmpDevError });
-    }
-
-    // =========================================================
     public static void main(final String argv[]) {
 	System.out.println("ATTRIBUTECOMPOSER VERSION " + VERSION);
 
 	try {
-
 	    final Util tg = Util.init(argv, "AttributeComposer");
 	    tg.server_init();
 	    System.out.println("Ready to accept request");
