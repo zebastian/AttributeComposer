@@ -12,9 +12,12 @@
 //
 // $Author: abeilleg $
 //
-// $Revision: 1.12 $
+// $Revision: 1.13 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.12  2010/08/17 16:33:33  abeilleg
+// refactoring
+//
 // Revision 1.11  2010/08/03 14:05:31  abeilleg
 // add delete_device for tangorb 7.3.2
 //
@@ -265,7 +268,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     public void init_device() throws DevFailed {
 
 	System.out.println("AttributeComposer() create " + device_name);
-
 	set_state(DevState.STANDBY);
 	attrQualityManager = new PriorityQualityManager();
 	try {
@@ -287,17 +289,18 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	    future = executor.scheduleAtFixedRate(new ValueReader(), 0L, internalReadingPeriod,
 		    TimeUnit.MILLISECONDS);
 
+	    deviceInitialized = true;
 	} catch (final DevFailed exception) {
 	    // exception.printStackTrace();
 	    deviceInitialized = false;
-	    set_state(faultState);
+	    set_state(DevState.DISABLE);
 	    set_status("Device is not initialzed properly :\n"
 		    + TangoUtil.getDevFailedString(exception));
 	    exception.printStackTrace();
 	} catch (final Exception exception) {
 	    // exception.printStackTrace();
 	    deviceInitialized = false;
-	    set_state(faultState);
+	    set_state(DevState.DISABLE);
 	    set_status("Device is not initialzed properly :\n" + exception.getMessage());
 	    exception.printStackTrace();
 	}
@@ -378,8 +381,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	    attributeNameArray[i++] = lastIndexName;
 	}
 
-	// Arrived here the device is initiazed correctly
-	deviceInitialized = true;
     }
 
     /**
@@ -514,6 +515,13 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     @Override
     public void always_executed_hook() {
 	get_logger().info("In always_executed_hook method()");
+	if (!deviceInitialized) {
+	    try {
+		init_device();
+	    } catch (final DevFailed e) {
+
+	    }
+	}
 	get_logger().info("Exiting always_executed_hook method()");
     }
 
