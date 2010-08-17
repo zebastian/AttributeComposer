@@ -7,12 +7,12 @@
 		<artifactId>super-pom-java</artifactId>
 		<version>RELEASE</version>
 	</parent>
-	
+
 	<groupId>fr.soleil.deviceservers</groupId>
 	<artifactId>AttributeComposer</artifactId>
 	<name>Attribute Composer</name>
 	<description>Attribute Composer Device Server</description>
-	<version>3.0.11</version>
+	<version>3.0.12-SNAPSHOT</version>
 	<scm>
 		<connection>${scm.connection.cvs.tango-ds}:Calculation/AttributeComposer</connection>
 		<developerConnection>${scm.developerConnection.cvs.tango-ds}:Calculation/AttributeComposer</developerConnection>
@@ -47,6 +47,6 @@
 		<dependency>
 			<groupId>fr.soleil.lib</groupId>
 			<artifactId>dtu</artifactId>
-			</dependency>
+		</dependency>
 	</dependencies>
 </project>
