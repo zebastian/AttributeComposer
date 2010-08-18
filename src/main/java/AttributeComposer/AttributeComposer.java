@@ -12,9 +12,12 @@
 //
 // $Author: abeilleg $
 //
-// $Revision: 1.13 $
+// $Revision: 1.14 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.13  2010/08/17 16:49:42  abeilleg
+// add auto init if failed previously
+//
 // Revision 1.12  2010/08/17 16:33:33  abeilleg
 // refactoring
 //
@@ -145,7 +148,8 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     /**
      * The logical gates to apply on the list of attribute.
      */
-    String logicalBoolean;
+
+    LogicalGateType logicalBoolean;
     /**
      * The time out of the device proxy
      */
@@ -180,11 +184,10 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     /*
      * The supported logical gates
      */
-    private static final String NONE = "NONE";
-    private static final String OR = "OR";
-    private static final String AND = "AND";
-    private static final String XOR = "XOR";
-    private static final String logicalChoices[] = { NONE, OR, AND, XOR };
+
+    private enum LogicalGateType {
+	NONE, OR, AND, XOR
+    }
 
     /**
      * The table of the attribute name and their associated proxy group
@@ -403,34 +406,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     }
 
     /**
-     * Return the result of the logical gates on a given vecto
-     */
-    private boolean apply_logical_gate(final List<Boolean> aBooleanVector) {
-	if (logicalBoolean.equals(NONE)) {
-	    return false;
-	}
-
-	boolean result = false;
-	if (aBooleanVector.size() == 1) {
-	    if (logicalBoolean.equalsIgnoreCase(XOR)) {
-		result = true;
-	    } else {
-		result = booleanLogicalList.get(0).booleanValue();
-	    }
-	}
-	if (aBooleanVector.size() == 2) {
-	    if (logicalBoolean.equalsIgnoreCase(XOR)) {
-		result = false;
-	    } else if (logicalBoolean.equalsIgnoreCase(OR)) {
-		result = true;
-	    } else {
-		result = false;
-	    }
-	}
-	return result;
-    }
-
-    /**
      * Read the device properties from database.
      */
     public void get_device_property() throws DevFailed {
@@ -465,18 +440,21 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	}
 
 	// Extract LogicalBoolean value
+	String logicalBooleanString;
 	if (!dev_prop[++i].is_empty()) {
-	    logicalBoolean = dev_prop[i].extractString();
-	    if (logicalBoolean.trim().equals("")) {
-		logicalBoolean = NONE;
+	    logicalBooleanString = dev_prop[i].extractString();
+	    logicalBoolean = LogicalGateType.valueOf(logicalBooleanString);
+	    if (logicalBooleanString.trim().equals("")) {
+		logicalBoolean = LogicalGateType.NONE;
+		logicalBooleanString = LogicalGateType.NONE.toString();
 		tmpDbDatum = get_db_device().get_property("LogicalBoolean");
-		tmpDbDatum.insert(logicalBoolean);
+		tmpDbDatum.insert(logicalBooleanString);
 		get_db_device().put_property(new DbDatum[] { tmpDbDatum });
 	    }
 	} else {
 	    tmpDbDatum = get_db_device().get_property("LogicalBoolean");
-	    logicalBoolean = NONE;
-	    tmpDbDatum.insert(logicalBoolean);
+	    logicalBoolean = LogicalGateType.NONE;
+	    tmpDbDatum.insert(LogicalGateType.NONE.toString());
 	    get_db_device().put_property(new DbDatum[] { tmpDbDatum });
 	}
 
@@ -574,27 +552,43 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     @Override
     public void read_attr_hardware(final Vector attr_list) {
 	get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
-	// if (m_initialized) {
-	// // Apply the logical gates on attr_booleanSpectrum_read
-	// booleanLogicalList.clear();
-	// for (final Map.Entry<String, Double> entry :
-	// attributeValueMap.entrySet()) {
-	// final String tmpAttributeName = entry.getKey();
-	// final double tmpReadValue = entry.getValue();
-	// short tmpBooleanShortValue = 0;
-	// boolean tmpBooleanValue = false;
-	// final int tmpIndex = get_index_for_attribute(tmpAttributeName);
-	// if (tmpReadValue == 1) {
-	// tmpBooleanShortValue = 1;
-	// tmpBooleanValue = true;
-	// }
-	// attr_spectrumResult_read[tmpIndex] = tmpReadValue;
-	// attr_booleanSpectrum_read[tmpIndex] = tmpBooleanShortValue;
-	// if (!booleanLogicalList.contains(tmpBooleanValue)) {
-	// booleanLogicalList.add(tmpBooleanValue);
-	// }
-	// }
-	// }
+	attr_booleanSpectrum_read = new short[attributeNameList.length];
+
+	Boolean a = null;
+	Boolean b = null;
+	for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
+	    final String attrName = entry.getKey();
+	    final double value = entry.getValue();
+	    final int index = get_index_for_attribute(attrName);
+	    if (value == 1) {
+		attr_booleanSpectrum_read[index] = 1;
+		a = true;
+	    } else {
+		attr_booleanSpectrum_read[index] = 0;
+		b = false;
+	    }
+
+	}
+	if (a == null) {
+	    a = false;
+	}
+	if (b == null) {
+	    b = true;
+	}
+	switch (logicalBoolean) {
+	case NONE:
+	    attr_booleanResult = false;
+	    break;
+	case XOR:
+	    attr_booleanResult = a ^ b;
+	    break;
+	case OR:
+	    attr_booleanResult = a | b;
+	    break;
+	case AND:
+	    attr_booleanResult = a & b;
+	    break;
+	}
     }
 
     // ===================================================================
@@ -629,28 +623,10 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	    attr.set_value(attr_attributesNumberPriorityList_read,
 		    attr_attributesNumberPriorityList_read.length);
 	} else if (attr_name == "booleanSpectrum") {
-	    attr_booleanSpectrum_read = new short[attributeNameList.length];
-	    for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
-		final String attrName = entry.getKey();
-		final double value = entry.getValue();
-		final int index = get_index_for_attribute(attrName);
-		boolean booleanValue;
-		if (value == 1) {
-		    attr_booleanSpectrum_read[index] = 1;
-		    booleanValue = true;
-		} else {
-		    attr_booleanSpectrum_read[index] = 0;
-		    booleanValue = false;
-		}
-		booleanLogicalList.add(booleanValue);
-	    }
+
 	    attr.set_value(attr_booleanSpectrum_read, attr_booleanSpectrum_read.length);
 	} else if (attr_name == "booleanResult") {
-	    // m_booleanLogicalVector is update in the ValueUpdater thread
-	    // System.out.println("m_booleanLogicalVector.size()=" +
-	    // m_booleanLogicalVector.size());
-	    final boolean result = apply_logical_gate(booleanLogicalList);
-	    attr.set_value(result);
+	    attr.set_value(attr_booleanResult);
 	} else if (attr_name.equals("lastStateEvent")) {
 	    attr.set_value(attr_lastStateEvent);
 	} else if (attr_name == "attributesResultReport") {
@@ -718,6 +694,11 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     // =========================================================
     public String[] get_logical_boolean() throws DevFailed {
 	get_logger().info("Entering get_tango_states()");
+	final LogicalGateType[] values = LogicalGateType.values();
+	final String[] logicalChoices = new String[values.length];
+	for (int i = 0; i < logicalChoices.length; i++) {
+	    logicalChoices[i] = values[i].toString();
+	}
 	get_logger().info("Exiting get_tango_states()");
 	return logicalChoices;
     }
@@ -963,6 +944,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 		    attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat
 			    .format(new Date())
 			    + " : " + TangoUtil.getDevFailedString(devFailed));
+		    devFailed.printStackTrace();
 		} catch (final Exception exception) {
 		    tmpHasFailed = true;
 		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName,
@@ -970,17 +952,18 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 		    attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat
 			    .format(new Date())
 			    + " : " + Except.str_exception(exception));
+		    exception.printStackTrace();
 		}
 	    }
-
-	    set_state(attrQualityManager.getHighestPriorityState());
-	    set_status("At least one attribute is of quality "
-		    + attrQualityManager.getHighestPriorityQualityAsString());
 
 	    if (tmpHasFailed) {
 		set_state(faultState);
 		set_status(m_insertformat.format(new Date())
 			+ " : Error see attributesResultReport");
+	    } else {
+		set_state(attrQualityManager.getHighestPriorityState());
+		set_status("At least one attribute is of quality "
+			+ attrQualityManager.getHighestPriorityQualityAsString());
 	    }
 	}
     }
