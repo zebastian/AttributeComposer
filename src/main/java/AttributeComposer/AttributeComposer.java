@@ -12,9 +12,12 @@
 //
 // $Author: abeilleg $
 //
-// $Revision: 1.14 $
+// $Revision: 1.15 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.14  2010/08/18 09:19:32  abeilleg
+// refactoring
+//
 // Revision 1.13  2010/08/17 16:49:42  abeilleg
 // add auto init if failed previously
 //
@@ -87,7 +90,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -212,7 +219,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     /**
      * When the device is well initialized = true
      */
-    private boolean deviceInitialized = false;
+    private volatile boolean deviceInitialized = false;
     /**
      * A dynamicAttribytesHelper to add and remove dynamic attributes
      */
@@ -229,6 +236,10 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
      * Version of the device
      */
     private static final String VERSION = "3.0.11";
+
+    private final ExecutorService initExecutor = Executors.newSingleThreadExecutor();
+
+    private Future<Boolean> initTaskResult;
 
     // =========================================================
     /**
@@ -271,41 +282,63 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     public void init_device() throws DevFailed {
 
 	System.out.println("AttributeComposer() create " + device_name);
-	set_state(DevState.STANDBY);
+	set_state(DevState.INIT);
 	attrQualityManager = new PriorityQualityManager();
+	deviceInitialized = false;
 	try {
 	    get_device_property();
-
 	    // get the custom priority
 	    getCustomPriorityList();
-
-	    // Creation of device proxy group
-	    groupCreation();
-
-	    // create a timer to read attributes
-	    if (internalReadingPeriod < 0) {
-		internalReadingPeriod = 3000;
-	    }
-
-	    executor = Executors.newScheduledThreadPool(1);
-
-	    future = executor.scheduleAtFixedRate(new ValueReader(), 0L, internalReadingPeriod,
-		    TimeUnit.MILLISECONDS);
-
-	    deviceInitialized = true;
 	} catch (final DevFailed exception) {
-	    // exception.printStackTrace();
 	    deviceInitialized = false;
 	    set_state(DevState.DISABLE);
 	    set_status("Device is not initialzed properly :\n"
 		    + TangoUtil.getDevFailedString(exception));
 	    exception.printStackTrace();
+	    return;
 	} catch (final Exception exception) {
-	    // exception.printStackTrace();
 	    deviceInitialized = false;
 	    set_state(DevState.DISABLE);
 	    set_status("Device is not initialzed properly :\n" + exception.getMessage());
 	    exception.printStackTrace();
+	    return;
+	}
+	initTaskResult = initExecutor.submit(new InitTask());
+    }
+
+    private void init() throws DevFailed {
+	// Creation of device proxy group
+	groupCreation();
+
+	// create a timer to read attributes
+	if (internalReadingPeriod < 0) {
+	    internalReadingPeriod = 3000;
+	}
+	executor = Executors.newScheduledThreadPool(1);
+	future = executor.scheduleAtFixedRate(new ValueReader(), 0L, internalReadingPeriod,
+		TimeUnit.MILLISECONDS);
+    }
+
+    private class InitTask implements Callable<Boolean> {
+
+	@Override
+	public Boolean call() throws Exception {
+	    try {
+		init();
+		return true;
+	    } catch (final DevFailed exception) {
+		set_state(DevState.DISABLE);
+		set_status("Device is not initialzed properly :\n"
+			+ TangoUtil.getDevFailedString(exception));
+		exception.printStackTrace();
+		return false;
+	    } catch (final Exception exception) {
+		set_state(DevState.DISABLE);
+		set_status("Device is not initialzed properly :\n" + exception.getMessage());
+		exception.printStackTrace();
+		return false;
+	    }
+
 	}
 
     }
@@ -493,11 +526,19 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     @Override
     public void always_executed_hook() {
 	get_logger().info("In always_executed_hook method()");
-	if (!deviceInitialized) {
+	if (initTaskResult.isDone()) {
 	    try {
-		init_device();
-	    } catch (final DevFailed e) {
-
+		deviceInitialized = initTaskResult.get();
+		// if init task has failed, retry it
+		if (!deviceInitialized) {
+		    System.out.println("init failed so retrying ");
+		    initTaskResult = initExecutor.submit(new InitTask());
+		    return;
+		}
+	    } catch (final InterruptedException e) {
+	    } catch (final ExecutionException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
 	    }
 	}
 	get_logger().info("Exiting always_executed_hook method()");
@@ -623,7 +664,6 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	    attr.set_value(attr_attributesNumberPriorityList_read,
 		    attr_attributesNumberPriorityList_read.length);
 	} else if (attr_name == "booleanSpectrum") {
-
 	    attr.set_value(attr_booleanSpectrum_read, attr_booleanSpectrum_read.length);
 	} else if (attr_name == "booleanResult") {
 	    attr.set_value(attr_booleanResult);
