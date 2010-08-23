@@ -12,9 +12,12 @@
 //
 // $Author: abeilleg $
 //
-// $Revision: 1.15 $
+// $Revision: 1.16 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.15  2010/08/23 10:06:33  abeilleg
+// lazy initialization
+//
 // Revision 1.14  2010/08/18 09:19:32  abeilleg
 // refactoring
 //
@@ -88,6 +91,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ResourceBundle;
 import java.util.StringTokenizer;
 import java.util.Vector;
 import java.util.concurrent.Callable;
@@ -235,7 +239,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     /**
      * Version of the device
      */
-    private static final String VERSION = "3.0.11";
+    private static String version;
 
     private final ExecutorService initExecutor = Executors.newSingleThreadExecutor();
 
@@ -338,9 +342,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 		exception.printStackTrace();
 		return false;
 	    }
-
 	}
-
     }
 
     /*
@@ -680,7 +682,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	    attr.set_value(attr_attributesResultReport_read,
 		    attr_attributesResultReport_read.length);
 	} else if (attr_name.equals("version")) {
-	    attr.set_value(VERSION);
+	    attr.set_value(version);
 	}
     }
 
@@ -1009,7 +1011,10 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
     }
 
     public static void main(final String argv[]) {
-	System.out.println("ATTRIBUTECOMPOSER VERSION " + VERSION);
+	final ResourceBundle rb = ResourceBundle
+		.getBundle("fr.soleil.attributecomposer.application");
+	version = rb.getString("project.version");
+	System.out.println("VERSION " + version);
 
 	try {
 	    final Util tg = Util.init(argv, "AttributeComposer");
