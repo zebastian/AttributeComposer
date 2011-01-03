@@ -12,7 +12,7 @@
 	<artifactId>AttributeComposer</artifactId>
 	<name>Attribute Composer</name>
 	<description>Attribute Composer Device Server</description>
-	<version>3.0.13</version>
+	<version>3.0.14-SNAPSHOT</version>
 	<scm>
 		<connection>${scm.connection.cvs.tango-ds}:Calculation/AttributeComposer</connection>
 		<developerConnection>${scm.developerConnection.cvs.tango-ds}:Calculation/AttributeComposer</developerConnection>
