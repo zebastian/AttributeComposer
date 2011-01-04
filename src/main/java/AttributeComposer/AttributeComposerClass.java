@@ -8,11 +8,14 @@
 //              which exists only once for all the  Ds_Composer object
 //              It inherits from the DeviceClass class.
 //
-// $Author: abeilleg $
+// $Author: gramer $
 //
-// $Revision: 1.3 $
+// $Revision: 1.4 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.3  2010/08/17 16:33:33  abeilleg
+// refactoring
+//
 // Revision 1.2  2008/01/11 15:07:17  katyho
 // Interfa�age avec TextTalker
 //
@@ -59,322 +62,290 @@ import fr.esrf.TangoDs.UserDefaultAttrProp;
 import fr.esrf.TangoDs.Util;
 
 public class AttributeComposerClass extends DeviceClass implements TangoConst {
-    /**
-     * AttributeComposerClass class instance (it is a singleton).
-     */
-    private static AttributeComposerClass _instance = null;
+	/**
+	 * AttributeComposerClass class instance (it is a singleton).
+	 */
+	private static AttributeComposerClass _instance = null;
 
-    /**
-     * Class properties array.
-     */
-    private DbDatum[] cl_prop = null;
+	/**
+	 * Class properties array.
+	 */
+	private DbDatum[] cl_prop = null;
 
-    // --------- Start of properties data members ----------
+	// --------- Start of properties data members ----------
 
-    // --------- End of properties data members ----------
+	// --------- End of properties data members ----------
 
-    // ===================================================================
-    //
-    // method : instance()
-    // 
-    // description : static method to retrieve the AttributeComposerClass object
-    // once it has been initialised
-    //
-    // ===================================================================
-    public static AttributeComposerClass instance() {
-	if (_instance == null) {
-	    System.err.println("AttributeComposerClass is not initialised !!!");
-	    System.err.println("Exiting");
-	    System.exit(-1);
-	}
-	return _instance;
-    }
-
-    // ===================================================================
-    //
-    // method : Init()
-    // 
-    // description : static method to create/retrieve the AttributeComposerClass
-    // object. This method is the only one which enables a
-    // user to create the object
-    //
-    // in : - class_name : The class name
-    //
-    // ===================================================================
-    public static AttributeComposerClass init(final String class_name) throws DevFailed {
-	if (_instance == null) {
-	    _instance = new AttributeComposerClass(class_name);
-	}
-	return _instance;
-    }
-
-    // ===================================================================
-    //
-    // method : AttributeComposerClass()
-    // 
-    // description : constructor for the AttributeComposerClass class
-    //
-    // argument : in : - name : The class name
-    //
-    // ===================================================================
-    protected AttributeComposerClass(final String name) throws DevFailed {
-	super(name);
-
-	Util.out2.println("Entering AttributeComposerClass constructor");
-	write_class_property();
-	get_class_property();
-
-	Util.out2.println("Leaving AttributeComposerClass constructor");
-    }
-
-    // ===================================================================
-    //
-    // method : command_factory()
-    // 
-    // description : Create the command object(s) and store them in the
-    // command list
-    // ===================================================================
-    @Override
-    public void command_factory() {
-	command_list.addElement(new GetAttributeNameForIndexClass("GetAttributeNameForIndex",
-		Tango_DEV_SHORT, Tango_DEV_STRING, "The index of the spectrum data",
-		"The attributeName corresponding to the argin index", DispLevel.OPERATOR));
-
-	command_list.addElement(new GetTangoQualitiesClass("GetTangoQualities", Tango_DEV_VOID,
-		Tango_DEVVAR_STRINGARRAY, "", "The list of the qualities", DispLevel.EXPERT));
-
-	command_list.addElement(new GetPriorityForQualityClass("GetPriorityForQuality",
-		Tango_DEV_STRING, Tango_DEV_SHORT, "The qualities name (ex:VALID, ALARM)",
-		"The priority of the quality", DispLevel.OPERATOR));
-
-	command_list.addElement(new GetLogicalBooleanClass("GetLogicalChoices", Tango_DEV_VOID,
-		Tango_DEVVAR_STRINGARRAY, "",
-		"The list of the logical choice for LogicalBoolean property", DispLevel.EXPERT));
-
-	command_list.addElement(new SetAllValuesClass("SetAllValues", Tango_DEV_DOUBLE,
-		Tango_DEV_VOID, "", "Set given value on all the attribute", DispLevel.OPERATOR));
-
-	command_list.addElement(new SetPropertyClass("SetAllFormat", Tango_DEV_STRING,
-		Tango_DEV_VOID, "The format of all the attribute", "", DispLevel.OPERATOR));
-
-	command_list.addElement(new SetPropertyClass("SetAllUnit", Tango_DEV_STRING,
-		Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
-
-	command_list.addElement(new SetPropertyClass("SetAllMinValue", Tango_DEV_DOUBLE,
-		Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
-	command_list.addElement(new SetPropertyClass("SetAllMaxValue", Tango_DEV_DOUBLE,
-		Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
-	command_list.addElement(new SetPropertyClass("SetAllMinAlarm", Tango_DEV_STRING,
-		Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
-	command_list.addElement(new SetPropertyClass("SetAllMaxAlarm", Tango_DEV_STRING,
-		Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
-	command_list.addElement(new SetPropertyClass("SetAllLabel", Tango_DEV_STRING,
-		Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
-
-	command_list.addElement(new ActivateAllClass("ActivateAll", Tango_DEV_VOID, Tango_DEV_VOID,
-		"", "Activate All attributes send 1 or true", DispLevel.OPERATOR));
-
-	command_list
-		.addElement(new DeactivateAllClass("DeactivateAll", Tango_DEV_VOID, Tango_DEV_VOID,
-			"", "Deactivate All attributes send 0 or false", DispLevel.OPERATOR));
-
-	// add polling if any
-	for (int i = 0; i < command_list.size(); i++) {
-	    /* Command cmd = (Command) */command_list.elementAt(i);
-	}
-    }
-
-    // ===================================================================
-    //
-    // method : device_factory()
-    // 
-    // description : Create the device object(s) and store them in the
-    // device list
-    //
-    // argument : in : String[] devlist : The device name list
-    //
-    // ===================================================================
-    @Override
-    public void device_factory(final String[] devlist) throws DevFailed {
-
-	for (int i = 0; i < devlist.length; i++) {
-	    Util.out4.println("Device name : " + devlist[i]);
-
-	    // Create device and add it into the device list
-	    // ----------------------------------------------
-	    device_list.addElement(new AttributeComposer(this, devlist[i]));
-
-	    // Export device to the outside world
-	    // ----------------------------------------------
-	    if (Util._UseDb == true) {
-		export_device(((DeviceImpl) device_list.elementAt(i)));
-	    } else {
-		export_device(((DeviceImpl) device_list.elementAt(i)), devlist[i]);
-	    }
-	}
-    }
-
-    // =============================================================================
-    //
-    // Method: attribute_factory(Vector att_list)
-    //
-    // =============================================================================
-    @Override
-    public void attribute_factory(final Vector att_list) throws DevFailed {
-	// Attribute : spectrumResult
-	final SpectrumAttr spectrum_result = new SpectrumAttr("spectrumResult", Tango_DEV_DOUBLE,
-		10000);
-	final UserDefaultAttrProp spectrum_result_prop = new UserDefaultAttrProp();
-	spectrum_result_prop.set_label("Spectrum Result");
-	spectrum_result.set_default_properties(spectrum_result_prop);
-	att_list.addElement(spectrum_result);
-
-	// Attribute : attributesQualityList
-	final SpectrumAttr attributes_state_list = new SpectrumAttr("attributesQualityList",
-		Tango_DEV_STRING, 1000);
-	final UserDefaultAttrProp attributes_state_list_prop = new UserDefaultAttrProp();
-	attributes_state_list_prop.set_label("Attributes Quality");
-	attributes_state_list_prop
-		.set_description("The list of the attribute quality in string format.\nCall GetAttributeNameForIndex to know which attribute corresponds to an index of the spectrum");
-	attributes_state_list.set_default_properties(attributes_state_list_prop);
-	att_list.addElement(attributes_state_list);
-
-	// Attribute : attributesNumberPriorityList
-	final SpectrumAttr attributes_number_priority_list = new SpectrumAttr(
-		"attributesNumberPriorityList", Tango_DEV_SHORT, 1000);
-	final UserDefaultAttrProp attributes_number_priority_list_prop = new UserDefaultAttrProp();
-	attributes_number_priority_list_prop.set_label("Attributes Priority");
-	attributes_number_priority_list_prop
-		.set_description("The list of the attributes quality in priority number format.\nCall GetAttributeNameForIndex to know which attributes corresponds to an index of the spectrum.\nCall GetPriorityForQuality to know the values of tango qualities.");
-	attributes_number_priority_list
-		.set_default_properties(attributes_number_priority_list_prop);
-	att_list.addElement(attributes_number_priority_list);
-
-	final SpectrumAttr attribute_boolean_spectrum = new SpectrumAttr("booleanSpectrum",
-		Tango_DEV_SHORT, 10000);
-	final UserDefaultAttrProp attribute_boolean_spectrum_prop = new UserDefaultAttrProp();
-	attribute_boolean_spectrum_prop.set_label("booleanSpectrum");
-	attribute_boolean_spectrum_prop.set_description("Spectrum of boolean value");
-	attribute_boolean_spectrum.set_default_properties(attribute_boolean_spectrum_prop);
-	att_list.addElement(attribute_boolean_spectrum);
-
-	final Attr attribute_boolean_result = new Attr("booleanResult", Tango_DEV_BOOLEAN,
-		AttrWriteType.READ_WRITE);
-	final UserDefaultAttrProp attribute_boolean_result_prop = new UserDefaultAttrProp();
-	attribute_boolean_result_prop.set_label("booleanResult");
-	attribute_boolean_result_prop
-		.set_description("Application of the logical gate LogicalBoolean gates on booleanSpectrum attribute");
-	attribute_boolean_result.set_default_properties(attribute_boolean_result_prop);
-	att_list.addElement(attribute_boolean_result);
-
-	final SpectrumAttr attribute_attributes_result_report = new SpectrumAttr(
-		"attributesResultReport", Tango_DEV_STRING, 10000);
-	final UserDefaultAttrProp attribute_attributes_result_report_prop = new UserDefaultAttrProp();
-	attribute_attributes_result_report_prop.set_label("attributesResultReport");
-	attribute_attributes_result_report_prop
-		.set_description("The result of the writing and reading instruction");
-	attribute_attributes_result_report
-		.set_default_properties(attribute_attributes_result_report_prop);
-	att_list.addElement(attribute_attributes_result_report);
-
-	// Attribute : LastStateEvent
-	final Attr state_event_attribute = new Attr("lastStateEvent", Tango_DEV_STRING,
-		AttrWriteType.READ);
-	final UserDefaultAttrProp state_event_attribute_prop = new UserDefaultAttrProp();
-	state_event_attribute_prop.set_label("Last State Event");
-	state_event_attribute_prop.set_description("The last state event : STATE at DATE");
-	state_event_attribute.set_default_properties(state_event_attribute_prop);
-	att_list.addElement(state_event_attribute);
-
-	// Attribute : State
-	// Attr state_attribute = new Attr("State",
-	// Tango_DEV_STRING,AttrWriteType.READ);
-	// UserDefaultAttrProp state_attribute_prop = new UserDefaultAttrProp();
-	// state_attribute_prop.set_label("State");
-	// state_attribute_prop.set_description("The state of the device");
-	// state_attribute.set_default_properties(state_attribute_prop);
-	// att_list.addElement(state_attribute);
-
-	// Attribute : Version number
-	final Attr version_attribute = new Attr("version", Tango_DEV_STRING, AttrWriteType.READ,
-		DispLevel.EXPERT);
-	final UserDefaultAttrProp version_attribute_prop = new UserDefaultAttrProp();
-	version_attribute_prop.set_label("Version");
-	version_attribute_prop.set_description("The number version of the device");
-	version_attribute.set_default_properties(version_attribute_prop);
-	att_list.addElement(version_attribute);
-
-    }
-
-    // ===================================================================
-    /**
-     * Get the class property for specified name.
-     * 
-     * @param name
-     *            The property name.
-     */
-    // ===================================================================
-    public DbDatum get_class_property(final String name) {
-	for (final DbDatum element : cl_prop) {
-	    if (element.name.equals(name)) {
-		return element;
-	    }
-	}
-	// if not found, return an empty DbDatum
-	return new DbDatum(name);
-    }
-
-    // ===================================================================
-    /**
-     * Read the class properties from database.
-     */
-    // ===================================================================
-    public void get_class_property() throws DevFailed {
-	// Initialize your default values here.
-	// ------------------------------------------
-
-	// Read class properties from database.(Automatic code generation)
-	// -------------------------------------------------------------
-	if (Util._UseDb == false) {
-	    return;
-	}
-	final String[] propnames = {};
-
-	// Call database and extract values
-	// --------------------------------------------
-	cl_prop = get_db_class().get_property(propnames);
-	// int i = -1;
-
-	// End of Automatic code generation
-	// -------------------------------------------------------------
-
-    }
-
-    // ===================================================================
-    /**
-     * Set class description as property in database
-     */
-    // ===================================================================
-    private void write_class_property() throws DevFailed {
-	// First time, check if database used
-	// --------------------------------------------
-	if (Util._UseDb == false) {
-	    return;
+	// ===================================================================
+	//
+	// method : instance()
+	//
+	// description : static method to retrieve the AttributeComposerClass object
+	// once it has been initialised
+	//
+	// ===================================================================
+	public static AttributeComposerClass instance() {
+		if (_instance == null) {
+			System.err.println("AttributeComposerClass is not initialised !!!");
+			System.err.println("Exiting");
+			System.exit(-1);
+		}
+		return _instance;
 	}
 
-	// Prepeare DbDatum
-	// --------------------------------------------
-	final DbDatum[] data = new DbDatum[2];
-	data[0] = new DbDatum("ProjectTitle");
-	data[0].insert("AttributeComposer");
+	// ===================================================================
+	//
+	// method : Init()
+	//
+	// description : static method to create/retrieve the AttributeComposerClass
+	// object. This method is the only one which enables a
+	// user to create the object
+	//
+	// in : - class_name : The class name
+	//
+	// ===================================================================
+	public static synchronized AttributeComposerClass init(final String class_name) throws DevFailed {
+		if (_instance == null) {
+			_instance = new AttributeComposerClass(class_name);
+		}
+		return _instance;
+	}
 
-	data[1] = new DbDatum("Description");
-	data[1]
-		.insert("This device composed a spectrum attribute from a list of scalar attribute.");
+	// ===================================================================
+	//
+	// method : AttributeComposerClass()
+	//
+	// description : constructor for the AttributeComposerClass class
+	//
+	// argument : in : - name : The class name
+	//
+	// ===================================================================
+	protected AttributeComposerClass(final String name) throws DevFailed {
+		super(name);
 
-	// Call database and and values
-	// --------------------------------------------
-	get_db_class().put_property(data);
-    }
+		Util.out2.println("Entering AttributeComposerClass constructor");
+		write_class_property();
+		get_class_property();
+
+		Util.out2.println("Leaving AttributeComposerClass constructor");
+	}
+
+	// ===================================================================
+	//
+	// method : command_factory()
+	//
+	// description : Create the command object(s) and store them in the
+	// command list
+	// ===================================================================
+	@Override
+	public void command_factory() {
+		command_list.addElement(new GetAttributeNameForIndexClass("GetAttributeNameForIndex", Tango_DEV_SHORT, Tango_DEV_STRING, "The index of the spectrum data",
+				"The attributeName corresponding to the argin index", DispLevel.OPERATOR));
+
+		command_list.addElement(new GetTangoQualitiesClass("GetTangoQualities", Tango_DEV_VOID, Tango_DEVVAR_STRINGARRAY, "", "The list of the qualities", DispLevel.EXPERT));
+
+		command_list.addElement(new GetPriorityForQualityClass("GetPriorityForQuality", Tango_DEV_STRING, Tango_DEV_SHORT, "The qualities name (ex:VALID, ALARM)", "The priority of the quality",
+				DispLevel.OPERATOR));
+
+		command_list.addElement(new GetLogicalBooleanClass("GetLogicalChoices", Tango_DEV_VOID, Tango_DEVVAR_STRINGARRAY, "", "The list of the logical choice for LogicalBoolean property",
+				DispLevel.EXPERT));
+
+		command_list.addElement(new SetAllValuesClass("SetAllValues", Tango_DEV_DOUBLE, Tango_DEV_VOID, "", "Set given value on all the attribute", DispLevel.OPERATOR));
+
+		command_list.addElement(new SetPropertyClass("SetAllFormat", Tango_DEV_STRING, Tango_DEV_VOID, "The format of all the attribute", "", DispLevel.OPERATOR));
+
+		command_list.addElement(new SetPropertyClass("SetAllUnit", Tango_DEV_STRING, Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
+
+		command_list.addElement(new SetPropertyClass("SetAllMinValue", Tango_DEV_DOUBLE, Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
+		command_list.addElement(new SetPropertyClass("SetAllMaxValue", Tango_DEV_DOUBLE, Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
+		command_list.addElement(new SetPropertyClass("SetAllMinAlarm", Tango_DEV_STRING, Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
+		command_list.addElement(new SetPropertyClass("SetAllMaxAlarm", Tango_DEV_STRING, Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
+		command_list.addElement(new SetPropertyClass("SetAllLabel", Tango_DEV_STRING, Tango_DEV_VOID, "The unit of all the attribute", "", DispLevel.OPERATOR));
+
+		command_list.addElement(new ActivateAllClass("ActivateAll", Tango_DEV_VOID, Tango_DEV_VOID, "", "Activate All attributes send 1 or true", DispLevel.OPERATOR));
+
+		command_list.addElement(new DeactivateAllClass("DeactivateAll", Tango_DEV_VOID, Tango_DEV_VOID, "", "Deactivate All attributes send 0 or false", DispLevel.OPERATOR));
+
+	}
+
+	// ===================================================================
+	//
+	// method : device_factory()
+	//
+	// description : Create the device object(s) and store them in the
+	// device list
+	//
+	// argument : in : String[] devlist : The device name list
+	//
+	// ===================================================================
+	@Override
+	public void device_factory(final String[] devlist) throws DevFailed {
+
+		for (int i = 0; i < devlist.length; i++) {
+			Util.out4.println("Device name : " + devlist[i]);
+
+			// Create device and add it into the device list
+			// ----------------------------------------------
+			device_list.addElement(new AttributeComposer(this, devlist[i]));
+
+			// Export device to the outside world
+			// ----------------------------------------------
+			if (Util._UseDb == true) {
+				export_device(((DeviceImpl) device_list.elementAt(i)));
+			} else {
+				export_device(((DeviceImpl) device_list.elementAt(i)), devlist[i]);
+			}
+		}
+	}
+
+	// =============================================================================
+	//
+	// Method: attribute_factory(Vector att_list)
+	//
+	// =============================================================================
+	@Override
+	public void attribute_factory(final Vector att_list) throws DevFailed {
+		// Attribute : spectrumResult
+		final SpectrumAttr spectrum_result = new SpectrumAttr("spectrumResult", Tango_DEV_DOUBLE, 10000);
+		final UserDefaultAttrProp spectrum_result_prop = new UserDefaultAttrProp();
+		spectrum_result_prop.set_label("Spectrum Result");
+		spectrum_result.set_default_properties(spectrum_result_prop);
+		att_list.addElement(spectrum_result);
+
+		// Attribute : attributesQualityList
+		final SpectrumAttr attributes_state_list = new SpectrumAttr("attributesQualityList", Tango_DEV_STRING, 1000);
+		final UserDefaultAttrProp attributes_state_list_prop = new UserDefaultAttrProp();
+		attributes_state_list_prop.set_label("Attributes Quality");
+		attributes_state_list_prop
+				.set_description("The list of the attribute quality in string format.\nCall GetAttributeNameForIndex to know which attribute corresponds to an index of the spectrum");
+		attributes_state_list.set_default_properties(attributes_state_list_prop);
+		att_list.addElement(attributes_state_list);
+
+		// Attribute : attributesNumberPriorityList
+		final SpectrumAttr attributes_number_priority_list = new SpectrumAttr("attributesNumberPriorityList", Tango_DEV_SHORT, 1000);
+		final UserDefaultAttrProp attributes_number_priority_list_prop = new UserDefaultAttrProp();
+		attributes_number_priority_list_prop.set_label("Attributes Priority");
+		attributes_number_priority_list_prop
+				.set_description("The list of the attributes quality in priority number format.\nCall GetAttributeNameForIndex to know which attributes corresponds to an index of the spectrum.\nCall GetPriorityForQuality to know the values of tango qualities.");
+		attributes_number_priority_list.set_default_properties(attributes_number_priority_list_prop);
+		att_list.addElement(attributes_number_priority_list);
+
+		final SpectrumAttr attribute_boolean_spectrum = new SpectrumAttr("booleanSpectrum", Tango_DEV_SHORT, 10000);
+		final UserDefaultAttrProp attribute_boolean_spectrum_prop = new UserDefaultAttrProp();
+		attribute_boolean_spectrum_prop.set_label("booleanSpectrum");
+		attribute_boolean_spectrum_prop.set_description("Spectrum of boolean value");
+		attribute_boolean_spectrum.set_default_properties(attribute_boolean_spectrum_prop);
+		att_list.addElement(attribute_boolean_spectrum);
+
+		final Attr attribute_boolean_result = new Attr("booleanResult", Tango_DEV_BOOLEAN, AttrWriteType.READ_WRITE);
+		final UserDefaultAttrProp attribute_boolean_result_prop = new UserDefaultAttrProp();
+		attribute_boolean_result_prop.set_label("booleanResult");
+		attribute_boolean_result_prop.set_description("Application of the logical gate LogicalBoolean gates on booleanSpectrum attribute");
+		attribute_boolean_result.set_default_properties(attribute_boolean_result_prop);
+		att_list.addElement(attribute_boolean_result);
+
+		final SpectrumAttr attribute_attributes_result_report = new SpectrumAttr("attributesResultReport", Tango_DEV_STRING, 10000);
+		final UserDefaultAttrProp attribute_attributes_result_report_prop = new UserDefaultAttrProp();
+		attribute_attributes_result_report_prop.set_label("attributesResultReport");
+		attribute_attributes_result_report_prop.set_description("The result of the writing and reading instruction");
+		attribute_attributes_result_report.set_default_properties(attribute_attributes_result_report_prop);
+		att_list.addElement(attribute_attributes_result_report);
+
+		// Attribute : LastStateEvent
+		final Attr state_event_attribute = new Attr("lastStateEvent", Tango_DEV_STRING, AttrWriteType.READ);
+		final UserDefaultAttrProp state_event_attribute_prop = new UserDefaultAttrProp();
+		state_event_attribute_prop.set_label("Last State Event");
+		state_event_attribute_prop.set_description("The last state event : STATE at DATE");
+		state_event_attribute.set_default_properties(state_event_attribute_prop);
+		att_list.addElement(state_event_attribute);
+
+		// Attribute : State
+		// Attr state_attribute = new Attr("State",
+		// Tango_DEV_STRING,AttrWriteType.READ);
+		// UserDefaultAttrProp state_attribute_prop = new UserDefaultAttrProp();
+		// state_attribute_prop.set_label("State");
+		// state_attribute_prop.set_description("The state of the device");
+		// state_attribute.set_default_properties(state_attribute_prop);
+		// att_list.addElement(state_attribute);
+
+		// Attribute : Version number
+		final Attr version_attribute = new Attr("version", Tango_DEV_STRING, AttrWriteType.READ, DispLevel.EXPERT);
+		final UserDefaultAttrProp version_attribute_prop = new UserDefaultAttrProp();
+		version_attribute_prop.set_label("Version");
+		version_attribute_prop.set_description("The number version of the device");
+		version_attribute.set_default_properties(version_attribute_prop);
+		att_list.addElement(version_attribute);
+
+	}
+
+	// ===================================================================
+	/**
+	 * Get the class property for specified name.
+	 * 
+	 * @param name
+	 *            The property name.
+	 */
+	// ===================================================================
+	public DbDatum get_class_property(final String name) {
+		for (final DbDatum element : cl_prop) {
+			if (element.name.equals(name)) {
+				return element;
+			}
+		}
+		// if not found, return an empty DbDatum
+		return new DbDatum(name);
+	}
+
+	// ===================================================================
+	/**
+	 * Read the class properties from database.
+	 */
+	// ===================================================================
+	public void get_class_property() throws DevFailed {
+		// Initialize your default values here.
+		// ------------------------------------------
+
+		// Read class properties from database.(Automatic code generation)
+		// -------------------------------------------------------------
+		if (Util._UseDb == false) {
+			return;
+		}
+		final String[] propnames = {};
+
+		// Call database and extract values
+		// --------------------------------------------
+		cl_prop = get_db_class().get_property(propnames);
+		// int i = -1;
+
+		// End of Automatic code generation
+		// -------------------------------------------------------------
+
+	}
+
+	// ===================================================================
+	/**
+	 * Set class description as property in database
+	 */
+	// ===================================================================
+	private void write_class_property() throws DevFailed {
+		// First time, check if database used
+		// --------------------------------------------
+		if (Util._UseDb == false) {
+			return;
+		}
+
+		// Prepeare DbDatum
+		// --------------------------------------------
+		final DbDatum[] data = new DbDatum[2];
+		data[0] = new DbDatum("ProjectTitle");
+		data[0].insert("AttributeComposer");
+
+		data[1] = new DbDatum("Description");
+		data[1].insert("This device composed a spectrum attribute from a list of scalar attribute.");
+
+		// Call database and and values
+		// --------------------------------------------
+		get_db_class().put_property(data);
+	}
 
 }
