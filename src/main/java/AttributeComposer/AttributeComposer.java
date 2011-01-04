@@ -10,11 +10,14 @@
 //              can be executed on the StateComposer are implemented
 //              in this file.
 //
-// $Author: abeilleg $
+// $Author: gramer $
 //
-// $Revision: 1.16 $
+// $Revision: 1.17 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.16  2010/08/23 12:31:19  abeilleg
+// add version management with maven properties
+//
 // Revision 1.15  2010/08/23 10:06:33  abeilleg
 // lazy initialization
 //
@@ -131,916 +134,884 @@ import fr.soleil.tango.util.TangoUtil;
 
 public class AttributeComposer extends DeviceImpl implements TangoConst {
 
-    protected int state;
+	protected int state;
 
-    // --------- Start of attributes data members ----------
-    protected double attr_spectrumResult_read[];
-    protected short attr_booleanSpectrum_read[];
-    protected String attr_attributesQualityList_read[];
-    protected short attr_attributesNumberPriorityList_read[];
-    protected String attr_attributesResultReport_read[];
-    protected boolean attr_booleanResult = false;
-    private String attr_lastStateEvent = "";
-    // --------- End of attributes data members ----------
+	// --------- Start of attributes data members ----------
+	protected double attr_spectrumResult_read[];
+	protected short attr_booleanSpectrum_read[];
+	protected String attr_attributesQualityList_read[];
+	protected short attr_attributesNumberPriorityList_read[];
+	protected String attr_attributesResultReport_read[];
+	protected boolean attr_booleanResult = false;
+	private String attr_lastStateEvent = "";
+	// --------- End of attributes data members ----------
 
-    // --------- Start of properties data members ----------
-    PriorityQualityManager attrQualityManager;
-    /**
-     * The list of attribute name used to composed the resum state and the
-     * spectrum result.
-     */
-    String attributeNameList[];
-    /**
-     * The priority number of a quality (the greater is the most important is
-     * ex: 5 for ALARM) Call GetTangoQuality to know the list of the Tango
-     * Quality order.
-     */
-    String priorityList[];
-    /**
-     * The logical gates to apply on the list of attribute.
-     */
+	// --------- Start of properties data members ----------
+	PriorityQualityManager attrQualityManager;
+	/**
+	 * The list of attribute name used to composed the resum state and the
+	 * spectrum result.
+	 */
+	String attributeNameList[];
+	/**
+	 * The priority number of a quality (the greater is the most important is
+	 * ex: 5 for ALARM) Call GetTangoQuality to know the list of the Tango
+	 * Quality order.
+	 */
+	String priorityList[];
+	/**
+	 * The logical gates to apply on the list of attribute.
+	 */
 
-    LogicalGateType logicalBoolean;
-    /**
-     * The time out of the device proxy
-     */
-    private int individualTimeout = -1;
-    /**
-     * The internal period of the Reading Thread
-     */
-    private int internalReadingPeriod = 3000;
-    /**
-     * The thread for read the value of attributes
-     */
-    // private ValueReader m_valueReader = null;
-    /**
-     * Timer to regularly retrieve attribute values of all managed devices
-     */
-    ScheduledFuture<?> future;
-    private ScheduledExecutorService executor;
+	LogicalGateType logicalBoolean;
+	/**
+	 * The time out of the device proxy
+	 */
+	private int individualTimeout = -1;
+	/**
+	 * The internal period of the Reading Thread
+	 */
+	private int internalReadingPeriod = 3000;
+	/**
+	 * The thread for read the value of attributes
+	 */
+	// private ValueReader m_valueReader = null;
+	/**
+	 * Timer to regularly retrieve attribute values of all managed devices
+	 */
+	ScheduledFuture<?> future;
+	private ScheduledExecutorService executor;
 
-    /**
-     * The FAULT state
-     */
-    private final DevState faultState = DevState.FAULT;
-    /**
-     * The last DevState
-     */
-    private DevState m_lastState = null;
+	/**
+	 * The FAULT state
+	 */
+	private final DevState faultState = DevState.FAULT;
+	/**
+	 * The last DevState
+	 */
+	private DevState m_lastState = null;
 
-    // --------- End of properties data members ----------
+	// --------- End of properties data members ----------
 
-    // Add your own data members here
-    // --------------------------------------
-    /*
-     * The supported logical gates
-     */
+	// Add your own data members here
+	// --------------------------------------
+	/*
+	 * The supported logical gates
+	 */
 
-    private enum LogicalGateType {
-	NONE, OR, AND, XOR
-    }
-
-    /**
-     * The table of the attribute name and their associated proxy group
-     * <attributeName, Group>
-     */
-    // private final Map<String, Group> attributeGroupMap = new HashMap<String,
-    // Group>();
-    TangoGroupAttribute attributeGroup;
-    /**
-     * The table of the attribute name and their associated read values
-     * <attributeName, values>
-     */
-    private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
-    /**
-     * The table of the attribute name and their associated message result
-     * <attributeName, message report> the messages are generated during the
-     * connexion, read or write instruction
-     */
-    private final Map<String, String> attributeResultReportMap = new HashMap<String, String>();
-
-    private final List<Boolean> booleanLogicalList = new ArrayList<Boolean>();
-    /**
-     * When the device is well initialized = true
-     */
-    private volatile boolean deviceInitialized = false;
-    /**
-     * A dynamicAttribytesHelper to add and remove dynamic attributes
-     */
-    private DynamicAttributesHelper m_dynamicAttributeHelper = null;
-
-    private String[] attributeNameArray;
-    // private AttributeGroup attributeGroup = null;
-    /**
-     * SimpleDateFormat to timeStamp the error messages
-     */
-    public static final SimpleDateFormat m_insertformat = new SimpleDateFormat(
-	    "dd-MM-yyyy HH:mm:ss");
-    /**
-     * Version of the device
-     */
-    private static String version;
-
-    private final ExecutorService initExecutor = Executors.newSingleThreadExecutor();
-
-    private Future<Boolean> initTaskResult;
-
-    // =========================================================
-    /**
-     * Constructor for simulated Time Device Server.
-     * 
-     * @param cl
-     *            The DeviceClass object
-     * @param s
-     *            The Device name.
-     */
-    // =========================================================
-    AttributeComposer(final DeviceClass cl, final String s) throws DevFailed {
-	super(cl, s);
-	init_device();
-    }
-
-    // =========================================================
-    /**
-     * Constructor for simulated Time Device Server.
-     * 
-     * @param cl
-     *            The DeviceClass object
-     * @param s
-     *            The Device name.
-     * @param d
-     *            Device description.
-     */
-    // =========================================================
-    AttributeComposer(final DeviceClass cl, final String s, final String d) throws DevFailed {
-	super(cl, s, d);
-	init_device();
-    }
-
-    // =========================================================
-    /**
-     * Initialize the device.
-     */
-    // =========================================================
-    @Override
-    public void init_device() throws DevFailed {
-
-	System.out.println("AttributeComposer() create " + device_name);
-	set_state(DevState.INIT);
-	attrQualityManager = new PriorityQualityManager();
-	deviceInitialized = false;
-	try {
-	    get_device_property();
-	    // get the custom priority
-	    getCustomPriorityList();
-	} catch (final DevFailed exception) {
-	    deviceInitialized = false;
-	    set_state(DevState.DISABLE);
-	    set_status("Device is not initialzed properly :\n"
-		    + TangoUtil.getDevFailedString(exception));
-	    exception.printStackTrace();
-	    return;
-	} catch (final Exception exception) {
-	    deviceInitialized = false;
-	    set_state(DevState.DISABLE);
-	    set_status("Device is not initialzed properly :\n" + exception.getMessage());
-	    exception.printStackTrace();
-	    return;
+	private enum LogicalGateType {
+		NONE, OR, AND, XOR
 	}
-	initTaskResult = initExecutor.submit(new InitTask());
-    }
 
-    private void init() throws DevFailed {
-	// Creation of device proxy group
-	groupCreation();
+	/**
+	 * The table of the attribute name and their associated proxy group
+	 * <attributeName, Group>
+	 */
+	// private final Map<String, Group> attributeGroupMap = new HashMap<String,
+	// Group>();
+	TangoGroupAttribute attributeGroup;
+	/**
+	 * The table of the attribute name and their associated read values
+	 * <attributeName, values>
+	 */
+	private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
+	/**
+	 * The table of the attribute name and their associated message result
+	 * <attributeName, message report> the messages are generated during the
+	 * connexion, read or write instruction
+	 */
+	private final Map<String, String> attributeResultReportMap = new HashMap<String, String>();
 
-	// create a timer to read attributes
-	if (internalReadingPeriod < 0) {
-	    internalReadingPeriod = 3000;
+	private final List<Boolean> booleanLogicalList = new ArrayList<Boolean>();
+	/**
+	 * When the device is well initialized = true
+	 */
+	private volatile boolean deviceInitialized = false;
+	/**
+	 * A dynamicAttribytesHelper to add and remove dynamic attributes
+	 */
+	private DynamicAttributesHelper m_dynamicAttributeHelper = null;
+
+	private String[] attributeNameArray;
+	// private AttributeGroup attributeGroup = null;
+	/**
+	 * SimpleDateFormat to timeStamp the error messages
+	 */
+	public static final SimpleDateFormat m_insertformat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+	/**
+	 * Version of the device
+	 */
+	private static String version;
+
+	private final ExecutorService initExecutor = Executors.newSingleThreadExecutor();
+
+	private Future<Boolean> initTaskResult;
+
+	// =========================================================
+	/**
+	 * Constructor for simulated Time Device Server.
+	 * 
+	 * @param cl
+	 *            The DeviceClass object
+	 * @param s
+	 *            The Device name.
+	 */
+	// =========================================================
+	AttributeComposer(final DeviceClass cl, final String s) throws DevFailed {
+		super(cl, s);
+		init_device();
 	}
-	executor = Executors.newScheduledThreadPool(1);
-	future = executor.scheduleAtFixedRate(new ValueReader(), 0L, internalReadingPeriod,
-		TimeUnit.MILLISECONDS);
-    }
 
-    private class InitTask implements Callable<Boolean> {
+	// =========================================================
+	/**
+	 * Constructor for simulated Time Device Server.
+	 * 
+	 * @param cl
+	 *            The DeviceClass object
+	 * @param s
+	 *            The Device name.
+	 * @param d
+	 *            Device description.
+	 */
+	// =========================================================
+	AttributeComposer(final DeviceClass cl, final String s, final String d) throws DevFailed {
+		super(cl, s, d);
+		init_device();
+	}
 
+	// =========================================================
+	/**
+	 * Initialize the device.
+	 */
+	// =========================================================
 	@Override
-	public Boolean call() throws Exception {
-	    try {
-		init();
-		return true;
-	    } catch (final DevFailed exception) {
-		set_state(DevState.DISABLE);
-		set_status("Device is not initialzed properly :\n"
-			+ TangoUtil.getDevFailedString(exception));
-		exception.printStackTrace();
-		return false;
-	    } catch (final Exception exception) {
-		set_state(DevState.DISABLE);
-		set_status("Device is not initialzed properly :\n" + exception.getMessage());
-		exception.printStackTrace();
-		return false;
-	    }
-	}
-    }
+	public void init_device() throws DevFailed {
 
-    /*
-     * Clear all
-     */
-    public void clearAll() {
-	attributeValueMap.clear();
-	// attributeGroupMap.clear();
-	attributeResultReportMap.clear();
-	attr_lastStateEvent = "";
-	deviceInitialized = false;
-
-	if (future != null) {
-	    future.cancel(true);
-	}
-	if (executor != null) {
-	    executor.shutdownNow();
-	}
-
-	try {
-	    if (m_dynamicAttributeHelper != null) {
-		m_dynamicAttributeHelper.delete_attributes();
-		m_dynamicAttributeHelper = null;
-	    }
-	} catch (final Exception e) {
-	}
-    }
-
-    /**
-     * Get the custom priority list
-     */
-    private void getCustomPriorityList() {
-
-	// Get the custom priority
-	for (final String element : priorityList) {
-	    // System.out.println("priorityList["+ i + "]=" + priorityList[i]);
-	    // Syntax "Quality","PriorityNumber"
-	    // So count the token separated by ","
-	    final StringTokenizer token = new StringTokenizer(element.trim(), ",");
-	    if (token.countTokens() == 2) {
-		// To avoid the the pb of case
-		final String tmpQualityName = token.nextToken().trim().toUpperCase();
-		// If the custom state exist
-		if (QualityUtilities.isQualityExist(tmpQualityName)) {
-		    // The default proprity
-		    final int tmpPriority = Integer.valueOf(token.nextToken().trim());
-		    // System.out.println("Quality=" + tmpQualityName);
-		    // System.out.println("Priority=" + tmpPriority);
-		    attrQualityManager.putQualityPriority(QualityUtilities
-			    .getQualityForName(tmpQualityName), tmpPriority);
-		}
-	    }
-	}
-    }
-
-    /**
-     * Creation of the group of devices
-     */
-    private void groupCreation() throws DevFailed {
-	// If no property defined the devices is in STANDBY
-	if (attributeNameList == null || attributeNameList.length == 0
-		|| attributeNameList[0].trim().isEmpty()) {
-	    Except.throw_exception("INIT_ERROR", "No attribute defined in property", this
-		    .getClass()
-		    + ".groupCreation");
-	}
-	attributeGroup = new TangoGroupAttribute("attribute composer", attributeNameList);
-	attributeNameArray = new String[attributeNameList.length];
-	int i = 0;
-	for (final String attribute : attributeNameList) {
-	    // attribute name = //TANGO:HOST/FAMILY/DOMAIN/MEMBER/ATTRIBUTENAME
-	    // So extract the last index of /
-	    final String lastIndexName = attribute.substring(attribute.lastIndexOf("/") + 1);
-	    attributeNameArray[i++] = lastIndexName;
-	}
-
-    }
-
-    /**
-     * Return the index of a given attribute
-     */
-    private int get_index_for_attribute(final String aAttributeName) {
-	final int tmpIndex = -1;
-
-	if (aAttributeName.trim().equals("")) {
-	    return tmpIndex;
-	}
-
-	for (int i = 0; i < attributeNameList.length; i++) {
-	    if (attributeNameList[i].trim().equalsIgnoreCase(aAttributeName)) {
-		return i;
-	    }
-	}
-
-	return tmpIndex;
-    }
-
-    /**
-     * Read the device properties from database.
-     */
-    public void get_device_property() throws DevFailed {
-	if (!Util._UseDb) {
-	    return;
-	}
-	final String propnames[] = { "AttributeNameList", "PriorityList", "LogicalBoolean",
-		"IndividualTimeout", "InternalReadingPeriod" };
-
-	final DbDatum dev_prop[] = get_db_device().get_property(propnames);
-	DbDatum tmpDbDatum = null;
-
-	int i = -1;
-
-	// Extract AttributeNameList value
-	if (!dev_prop[++i].is_empty()) {
-	    attributeNameList = dev_prop[i].extractStringArray();
-	} else {
-	    tmpDbDatum = get_db_device().get_property("AttributeNameList");
-	    attributeNameList = new String[] { "" };
-	    tmpDbDatum.insert(attributeNameList);
-	    get_db_device().put_property(new DbDatum[] { tmpDbDatum });
-	}
-
-	// Extract PriorityList value
-	if (!dev_prop[++i].is_empty()) {
-	    priorityList = dev_prop[i].extractStringArray();
-	} else {
-	    tmpDbDatum = get_db_device().get_property("PriorityList");
-	    tmpDbDatum.insert(priorityList);
-	    get_db_device().put_property(new DbDatum[] { tmpDbDatum });
-	}
-
-	// Extract LogicalBoolean value
-	String logicalBooleanString;
-	if (!dev_prop[++i].is_empty()) {
-	    logicalBooleanString = dev_prop[i].extractString();
-	    logicalBoolean = LogicalGateType.valueOf(logicalBooleanString);
-	    if (logicalBooleanString.trim().equals("")) {
-		logicalBoolean = LogicalGateType.NONE;
-		logicalBooleanString = LogicalGateType.NONE.toString();
-		tmpDbDatum = get_db_device().get_property("LogicalBoolean");
-		tmpDbDatum.insert(logicalBooleanString);
-		get_db_device().put_property(new DbDatum[] { tmpDbDatum });
-	    }
-	} else {
-	    tmpDbDatum = get_db_device().get_property("LogicalBoolean");
-	    logicalBoolean = LogicalGateType.NONE;
-	    tmpDbDatum.insert(LogicalGateType.NONE.toString());
-	    get_db_device().put_property(new DbDatum[] { tmpDbDatum });
-	}
-
-	// Extract IndividualTimeout value
-	if (!dev_prop[++i].is_empty()) {
-	    individualTimeout = dev_prop[i].extractLong();
-	} else {
-	    tmpDbDatum = get_db_device().get_property("IndividualTimeout");
-	    tmpDbDatum.insert(individualTimeout);
-	    get_db_device().put_property(new DbDatum[] { tmpDbDatum });
-	}
-
-	// Extract InternalReadingPeriod value
-	if (!dev_prop[++i].is_empty()) {
-	    internalReadingPeriod = dev_prop[i].extractLong();
-	} else {
-	    tmpDbDatum = get_db_device().get_property("InternalReadingPeriod");
-	    tmpDbDatum.insert(internalReadingPeriod);
-	    get_db_device().put_property(new DbDatum[] { tmpDbDatum });
-	}
-    }
-
-    @Override
-    public void set_state(final DevState aState) {
-	super.set_state(aState);
-	if (m_lastState == null || !m_lastState.equals(aState)) {
-	    m_lastState = aState;
-	    attr_lastStateEvent = StateUtilities.getNameForState(m_lastState) + " at "
-		    + m_insertformat.format(new Date());
-	}
-    }
-
-    /**
-     * Method always executed before command execution.
-     */
-    @Override
-    public void always_executed_hook() {
-	get_logger().info("In always_executed_hook method()");
-	if (initTaskResult.isDone()) {
-	    try {
-		deviceInitialized = initTaskResult.get();
-		// if init task has failed, retry it
-		if (!deviceInitialized) {
-		    System.out.println("init failed so retrying ");
-		    initTaskResult = initExecutor.submit(new InitTask());
-		    return;
-		}
-	    } catch (final InterruptedException e) {
-	    } catch (final ExecutionException e) {
-		// TODO Auto-generated catch block
-		e.printStackTrace();
-	    }
-	}
-	get_logger().info("Exiting always_executed_hook method()");
-    }
-
-    /**
-     * Method called by the write_attributes CORBA operation to write device
-     * hardware.
-     * 
-     * @param attr_list
-     *            vector of index in the attribute vector of attribute to be
-     *            written
-     */
-    @SuppressWarnings("unchecked")
-    @Override
-    public void write_attr_hardware(final Vector attr_list) throws DevFailed {
-	Util.out2.println("In write_attr_hardware for " + attr_list.size() + " attribute(s)");
-
-	get_logger().info("write_attr_hardware" + attr_list.size() + " attribute(s)");
-
-	for (int i = 0; i < attr_list.size(); i++) {
-	    final WAttribute att = dev_attr.get_w_attr_by_ind(((Integer) attr_list.elementAt(i))
-		    .intValue());
-	    final String attr_name = att.get_name();
-
-	    // Switch on attribute name
-	    // ---------------------------------
-	    if (attr_name.equals("booleanResult")) {
-		final boolean tmpWriteBoolean = att.getBooleanWriteValue();
-		get_logger().info("write_attr_hardware booleanResult attribute " + tmpWriteBoolean);
-		if (tmpWriteBoolean) {
-		    activate_all();
-		} else {
-		    deactivage_all();
-		}
-
-	    }
-	}
-    }
-
-    // ===================================================================
-    /**
-     * Method called by the read_attributes CORBA operation to read device
-     * hardware
-     * 
-     * @param attr_list
-     *            Vector of index in the attribute vector of attribute to be
-     *            read
-     */
-    @SuppressWarnings("unchecked")
-    // ===================================================================
-    @Override
-    public void read_attr_hardware(final Vector attr_list) {
-	get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
-	attr_booleanSpectrum_read = new short[attributeNameList.length];
-
-	Boolean a = null;
-	Boolean b = null;
-	for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
-	    final String attrName = entry.getKey();
-	    final double value = entry.getValue();
-	    final int index = get_index_for_attribute(attrName);
-	    if (value == 1) {
-		attr_booleanSpectrum_read[index] = 1;
-		a = true;
-	    } else {
-		attr_booleanSpectrum_read[index] = 0;
-		b = false;
-	    }
-
-	}
-	if (a == null) {
-	    a = false;
-	}
-	if (b == null) {
-	    b = true;
-	}
-	switch (logicalBoolean) {
-	case NONE:
-	    attr_booleanResult = false;
-	    break;
-	case XOR:
-	    attr_booleanResult = a ^ b;
-	    break;
-	case OR:
-	    attr_booleanResult = a | b;
-	    break;
-	case AND:
-	    attr_booleanResult = a & b;
-	    break;
-	}
-    }
-
-    // ===================================================================
-    /**
-     * Method called by the read_attributes CORBA operation to set internal
-     * attribute value.
-     * 
-     * @param attr
-     *            reference to the Attribute object
-     */
-    // ===================================================================
-    @Override
-    public void read_attr(final Attribute attr) throws DevFailed {
-	final String attr_name = attr.get_name();
-	get_logger().info("In read_attr for attribute " + attr_name);
-
-	// attr_spectrumResult_read update in ValueUpdater Thread
-	if (attr_name == "spectrumResult") {
-	    attr_spectrumResult_read = new double[attributeNameList.length];
-	    for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
-		final String attrName = entry.getKey();
-		final double value = entry.getValue();
-		final int index = get_index_for_attribute(attrName);
-		attr_spectrumResult_read[index] = value;
-	    }
-	    attr.set_value(attr_spectrumResult_read, attr_spectrumResult_read.length);
-	} else if (attr_name == "attributesQualityList") {
-	    attr_attributesQualityList_read = attrQualityManager.getQualityArray();
-	    attr.set_value(attr_attributesQualityList_read, attr_attributesQualityList_read.length);
-	} else if (attr_name == "attributesNumberPriorityList") {
-	    attr_attributesNumberPriorityList_read = attrQualityManager.getQualityNumberArray();
-	    attr.set_value(attr_attributesNumberPriorityList_read,
-		    attr_attributesNumberPriorityList_read.length);
-	} else if (attr_name == "booleanSpectrum") {
-	    attr.set_value(attr_booleanSpectrum_read, attr_booleanSpectrum_read.length);
-	} else if (attr_name == "booleanResult") {
-	    attr.set_value(attr_booleanResult);
-	} else if (attr_name.equals("lastStateEvent")) {
-	    attr.set_value(attr_lastStateEvent);
-	} else if (attr_name == "attributesResultReport") {
-	    attr_attributesResultReport_read = new String[attributeResultReportMap.size()];
-	    int tmpIndex = 0;
-	    for (final Map.Entry<String, String> entry : attributeResultReportMap.entrySet()) {
-		final String key = entry.getKey();
-		attr_attributesResultReport_read[tmpIndex] = key + "->" + entry.getValue();
-		tmpIndex++;
-	    }
-	    attr.set_value(attr_attributesResultReport_read,
-		    attr_attributesResultReport_read.length);
-	} else if (attr_name.equals("version")) {
-	    attr.set_value(version);
-	}
-    }
-
-    // =========================================================
-    /**
-     * Execute command "GetPriorityForQuality" on device. This command return
-     * the priority for a given quality
-     */
-    // =========================================================
-    public short get_priority_for_quality(final String argin) throws DevFailed {
-	short argout = 0;
-	get_logger().info("Entering get_priority_for_state()");
-	argout = (short) attrQualityManager.getPriorityForQuality(argin);
-	get_logger().info("Exiting get_priority_for_state()");
-	return argout;
-    }
-
-    // =========================================================
-    /**
-     * Execute command "GetTangoQualities" on device. This command return the
-     * list of possibles qualities
-     */
-    // =========================================================
-    public String[] get_tango_qualities() throws DevFailed {
-	get_logger().info("Entering get_tango_states()");
-	get_logger().info("Exiting get_tango_states()");
-	return QualityUtilities.QUALITYIST;
-    }
-
-    // =========================================================
-    /**
-     * Execute command "GetAttributeNameForIndex" on device. This command return
-     * the attribute of an associated index
-     */
-    // =========================================================
-    public String get_attribute_name_for_index(final short argin) throws DevFailed {
-	get_logger().info("Entering get_attribute_name_for_index()");
-	String argout = "Unknown Index";
-	if (attributeNameList != null && argin > -1 && argin < attributeNameList.length) {
-	    argout = attributeNameList[argin];
-	}
-	get_logger().info("Exiting get_attribute_name_for_index()");
-	return argout;
-    }
-
-    // =========================================================
-    /**
-     * Execute command "GetLogicalChoices" on device. This command return the
-     * list of possibles logical gates
-     */
-    // =========================================================
-    public String[] get_logical_boolean() throws DevFailed {
-	get_logger().info("Entering get_tango_states()");
-	final LogicalGateType[] values = LogicalGateType.values();
-	final String[] logicalChoices = new String[values.length];
-	for (int i = 0; i < logicalChoices.length; i++) {
-	    logicalChoices[i] = values[i].toString();
-	}
-	get_logger().info("Exiting get_tango_states()");
-	return logicalChoices;
-    }
-
-    // =========================================================
-    /**
-     * Execute command "SetAllValues" on device. This command write the given
-     * value on all the attributes
-     */
-    // =========================================================
-    public void set_all_values(final double argin) throws DevFailed {
-	get_logger().info("Entering set_all_values()");
-	// System.out.println(m_initialized);
-	// Do nothing if the device is in error
-	if (!deviceInitialized) {
-	    Except.throw_exception("INIT_ERROR", "Device not correctly initialized", this
-		    .getClass()
-		    + ".set_all_values");
-	    return;
-	}
-
-	write_attribute(argin);
-
-	get_logger().info("Exiting set_all_values()");
-    }
-
-    public void write_attribute(final double argin) throws DevFailed {
-
-	get_logger().info("writing " + argin);
-	if (Double.isNaN(argin)) {
-	    return;
-	}
-
-	attributeGroup.insert(new Double(argin).toString());
-	attributeGroup.write();
-    }
-
-    private enum PropertyType {
-	FORMAT, UNIT, ALARM_MIN, ALARM_MAX, MIN_VAL, MAX_VAL, LABEL;
-    }
-
-    // =========================================================
-    /**
-     * Execute command "SetAllFormat" on device. This command set the format
-     * property eg : %6.3f on all the attributes
-     */
-    // =========================================================
-    public void set_all_format(final String argin) throws DevFailed {
-	get_logger().info("Entering set_all_format()");
-	setAttributeProperty(argin, PropertyType.FORMAT);
-	get_logger().info("Exiting set_all_format()");
-    }
-
-    private void setAttributeProperty(final String property, final PropertyType type)
-	    throws DevFailed {
-	// Get each proxy
-	for (int i = 0; i < attributeNameList.length; i++) {
-	    final DeviceProxy tmpDevicePoxy = attributeGroup.getGroup().getDevice(
-		    attributeNameList[i]);
-	    System.out.println("tmpDevicePoxy=" + tmpDevicePoxy.get_name() + "/"
-		    + attributeNameArray[i]);
-
-	    final String tmpDeviceName = tmpDevicePoxy.get_name();
-	    final AttributeInfo tmpAttributeInfo = tmpDevicePoxy
-		    .get_attribute_info(attributeNameArray[i]);
-	    switch (type) {
-	    case FORMAT:
-		tmpAttributeInfo.format = property;
-		break;
-	    case UNIT:
-		tmpAttributeInfo.unit = property;
-		break;
-	    case ALARM_MIN:
-		tmpAttributeInfo.min_alarm = property;
-		break;
-	    case ALARM_MAX:
-		tmpAttributeInfo.max_alarm = property;
-		break;
-	    case MIN_VAL:
-		tmpAttributeInfo.min_value = property;
-		break;
-	    case MAX_VAL:
-		tmpAttributeInfo.max_value = property;
-		break;
-	    case LABEL:
-		tmpAttributeInfo.label = property;
-		break;
-	    }
-
-	    try {
-		tmpDevicePoxy.set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
-		// Arrived here the command is SUCCESS
-		attributeResultReportMap.put(tmpDeviceName + "/" + attributeNameArray[i],
-			m_insertformat.format(new Date()) + " : Set Format property to " + property
-				+ " : SUCCESS");
-	    } catch (final DevFailed e) {
-		attributeResultReportMap.put(tmpDeviceName + "/" + attributeNameArray[i],
-			m_insertformat.format(new Date()) + " : Set Unit property to " + property
-				+ " : FAILED");
-		throw e;
-	    }
-	}
-    }
-
-    // =========================================================
-    /**
-     * Execute command "SetAllUnit" on device. This command set the Unit
-     * property eg : Volt on all the attributes
-     */
-    // =========================================================
-    public void set_all_unit(final String argin) throws DevFailed {
-	get_logger().info("Entering set_all_unit()");
-	setAttributeProperty(argin, PropertyType.UNIT);
-	get_logger().info("Exiting set_all_unit()");
-    }
-
-    // =========================================================
-    /**
-     * Execute command "SetAllMinValue" on device. This command set the minimum
-     * value property on all the attributes
-     */
-    // =========================================================
-    public void set_all_min_value(final double argin) throws DevFailed {
-	get_logger().info("Entering set_all_min_value()");
-	setAttributeProperty(String.valueOf(argin), PropertyType.MIN_VAL);
-	get_logger().info("Exiting set_all_min_value()");
-    }
-
-    // =========================================================
-    /**
-     * Execute command "SetAllMaxValue" on device. This command set the maximum
-     * value property on all the attributes
-     */
-    // =========================================================
-    public void set_all_max_value(final double argin) throws DevFailed {
-	get_logger().info("Entering set_all_max_value()");
-	setAttributeProperty(String.valueOf(argin), PropertyType.MAX_VAL);
-	get_logger().info("Exiting set_all_max_value()");
-    }
-
-    // =========================================================
-    /**
-     * Execute command "SetAllMinAlarm" on device. This command set the minimum
-     * alarm value property on all the attributes
-     */
-    // =========================================================
-    public void set_all_min_alarm(final double argin) throws DevFailed {
-	get_logger().info("Entering set_all_min_alarm()");
-	setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MIN);
-	get_logger().info("Exiting set_all_min_alarm()");
-    }
-
-    // =========================================================
-    /**
-     * Execute command "SetAllMaxAlarm" on device. This command set the maximum
-     * alarm value property on all the attributes
-     */
-    // =========================================================
-    public void set_all_max_alarm(final double argin) throws DevFailed {
-	get_logger().info("Entering set_all_max_alarm()");
-	setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MAX);
-	get_logger().info("Exiting set_all_max_alarm()");
-    }
-
-    // =========================================================
-    /**
-     * Execute command "SetAllLabel" on device. This command set the Label
-     * property on all the attributes
-     */
-    // =========================================================
-    public void set_all_label(final String argin) throws DevFailed {
-	get_logger().info("Entering set_all_label()");
-	setAttributeProperty(argin, PropertyType.LABEL);
-	get_logger().info("Exiting set_all_label()");
-    }
-
-    /**
-     * Execute command "ActivateAll" on device. This command write 1 or true on
-     * all the attributes
-     */
-    public void activate_all() throws DevFailed {
-	get_logger().info("Entering activate_all()");
-	set_all_values(1);
-	get_logger().info("Exiting activate_all()");
-    }
-
-    /**
-     * Execute command "DeactivateAll" on device. This command write 0 or false
-     * on all the attributes
-     */
-    public void deactivage_all() throws DevFailed {
-	get_logger().info("Entering deactivage_all()");
-	set_all_values(0);
-	get_logger().info("Exiting deactivage_all()");
-    }
-
-    public class ValueReader implements Runnable {
-
-	@Override
-	public void run() {
-	    valueReader();
-	}
-
-	public void valueReader() {
-
-	    GroupAttrReplyList resultGroup = null;
-	    // read attributes
-	    try {
-		resultGroup = attributeGroup.read();
-	    } catch (final DevFailed devFailed) {
-		set_state(faultState);
-		set_status(m_insertformat.format(new Date())
-			+ " : Unexpected Error, cannot read: \n"
-			+ TangoUtil.getDevFailedString(devFailed));
-	    } catch (final Exception exception) {
-		set_state(faultState);
-		set_status(m_insertformat.format(new Date())
-			+ " : Unexpected Error, cannot read: \n" + Except.str_exception(exception));
-	    }
-
-	    // extract results
-	    boolean tmpHasFailed = false;
-	    final Enumeration<?> enumeration2 = resultGroup.elements();
-	    DeviceAttribute tmpDeviceAttribute = null;
-	    while (enumeration2.hasMoreElements()) {
-		final GroupAttrReply tmpOneResult = (GroupAttrReply) enumeration2.nextElement();
-		String tmpDeviceName = "";
-		tmpDeviceName = tmpOneResult.dev_name();
-		final String attrName = tmpOneResult.obj_name();
-		AttrQuality tmpQuality = AttrQuality.ATTR_INVALID;
+		System.out.println("AttributeComposer() create " + device_name);
+		set_state(DevState.INIT);
+		attrQualityManager = new PriorityQualityManager();
+		deviceInitialized = false;
 		try {
-		    tmpDeviceAttribute = tmpOneResult.get_data();
-		    double tmpReadValue = Double.NaN;
-		    tmpReadValue = AttributeHelper.extractToDouble(tmpDeviceAttribute);
-		    tmpQuality = tmpDeviceAttribute.getQuality();
-		    attributeValueMap.put(tmpDeviceName + "/" + attrName, tmpReadValue);
-		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName,
-			    tmpQuality);
-		} catch (final DevFailed devFailed) {
-		    tmpHasFailed = true;
-		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName,
-			    tmpQuality);
-		    attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat
-			    .format(new Date())
-			    + " : " + TangoUtil.getDevFailedString(devFailed));
-		    devFailed.printStackTrace();
+			get_device_property();
+			// get the custom priority
+			getCustomPriorityList();
+		} catch (final DevFailed exception) {
+			deviceInitialized = false;
+			set_state(DevState.DISABLE);
+			set_status("Device is not initialzed properly :\n" + TangoUtil.getDevFailedString(exception));
+			exception.printStackTrace();
+			return;
 		} catch (final Exception exception) {
-		    tmpHasFailed = true;
-		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName,
-			    tmpQuality);
-		    attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat
-			    .format(new Date())
-			    + " : " + Except.str_exception(exception));
-		    exception.printStackTrace();
+			deviceInitialized = false;
+			set_state(DevState.DISABLE);
+			set_status("Device is not initialzed properly :\n" + exception.getMessage());
+			exception.printStackTrace();
+			return;
 		}
-	    }
-
-	    if (tmpHasFailed) {
-		set_state(faultState);
-		set_status(m_insertformat.format(new Date())
-			+ " : Error see attributesResultReport");
-	    } else {
-		set_state(attrQualityManager.getHighestPriorityState());
-		set_status("At least one attribute is of quality "
-			+ attrQualityManager.getHighestPriorityQualityAsString());
-	    }
+		initTaskResult = initExecutor.submit(new InitTask());
 	}
-    }
 
-    public static void main(final String argv[]) {
-	final ResourceBundle rb = ResourceBundle
-		.getBundle("fr.soleil.attributecomposer.application");
-	version = rb.getString("project.version");
-	System.out.println("VERSION " + version);
+	private void init() throws DevFailed {
+		// Creation of device proxy group
+		groupCreation();
 
-	try {
-	    final Util tg = Util.init(argv, "AttributeComposer");
-	    tg.server_init();
-	    System.out.println("Ready to accept request");
-	    tg.server_run();
-	} catch (final OutOfMemoryError ex) {
-	    System.err.println("Can't allocate memory !!!!");
-	    System.err.println("Exiting");
-	} catch (final UserException ex) {
-	    Except.print_exception(ex);
-	    System.err.println("Received a CORBA user exception");
-	    System.err.println("Exiting");
-	} catch (final SystemException ex) {
-	    Except.print_exception(ex);
-	    System.err.println("Received a CORBA system exception");
-	    System.err.println("Exiting");
+		// create a timer to read attributes
+		if (internalReadingPeriod < 0) {
+			internalReadingPeriod = 3000;
+		}
+		executor = Executors.newScheduledThreadPool(1);
+		future = executor.scheduleAtFixedRate(new ValueReader(), 0L, internalReadingPeriod, TimeUnit.MILLISECONDS);
 	}
-	System.exit(-1);
 
-    }
+	private class InitTask implements Callable<Boolean> {
 
-    @Override
-    public void delete_device() throws DevFailed {
-	// Clear all the commands and empty the tables
-	clearAll();
-    }
+		@Override
+		public Boolean call() throws Exception {
+			try {
+				init();
+				return true;
+			} catch (final DevFailed exception) {
+				set_state(DevState.DISABLE);
+				set_status("Device is not initialzed properly :\n" + TangoUtil.getDevFailedString(exception));
+				exception.printStackTrace();
+				return false;
+			} catch (final Exception exception) {
+				set_state(DevState.DISABLE);
+				set_status("Device is not initialzed properly :\n" + exception.getMessage());
+				exception.printStackTrace();
+				return false;
+			}
+		}
+	}
+
+	/*
+	 * Clear all
+	 */
+	public void clearAll() {
+		attributeValueMap.clear();
+		// attributeGroupMap.clear();
+		attributeResultReportMap.clear();
+		attr_lastStateEvent = "";
+		deviceInitialized = false;
+
+		if (future != null) {
+			future.cancel(true);
+		}
+		if (executor != null) {
+			executor.shutdownNow();
+		}
+
+		try {
+			if (m_dynamicAttributeHelper != null) {
+				m_dynamicAttributeHelper.delete_attributes();
+				m_dynamicAttributeHelper = null;
+			}
+		} catch (final Exception e) {
+		}
+	}
+
+	/**
+	 * Get the custom priority list
+	 */
+	private void getCustomPriorityList() {
+
+		// Get the custom priority
+		for (final String element : priorityList) {
+			// System.out.println("priorityList["+ i + "]=" + priorityList[i]);
+			// Syntax "Quality","PriorityNumber"
+			// So count the token separated by ","
+			final StringTokenizer token = new StringTokenizer(element.trim(), ",");
+			if (token.countTokens() == 2) {
+				// To avoid the the pb of case
+				final String tmpQualityName = token.nextToken().trim().toUpperCase();
+				// If the custom state exist
+				if (QualityUtilities.isQualityExist(tmpQualityName)) {
+					// The default proprity
+					final int tmpPriority = Integer.valueOf(token.nextToken().trim());
+					// System.out.println("Quality=" + tmpQualityName);
+					// System.out.println("Priority=" + tmpPriority);
+					attrQualityManager.putQualityPriority(QualityUtilities.getQualityForName(tmpQualityName), tmpPriority);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Creation of the group of devices
+	 */
+	private void groupCreation() throws DevFailed {
+		// If no property defined the devices is in STANDBY
+		if (attributeNameList == null || attributeNameList.length == 0 || attributeNameList[0].trim().isEmpty()) {
+			Except.throw_exception("INIT_ERROR", "No attribute defined in property", this.getClass() + ".groupCreation");
+
+		}
+
+		attributeGroup = new TangoGroupAttribute("attribute composer", attributeNameList);
+		attributeNameArray = new String[attributeNameList.length];
+		int i = 0;
+		for (final String attribute : attributeNameList) {
+			// attribute name = //TANGO:HOST/FAMILY/DOMAIN/MEMBER/ATTRIBUTENAME
+			// So extract the last index of /
+			final String lastIndexName = attribute.substring(attribute.lastIndexOf("/") + 1);
+			attributeNameArray[i++] = lastIndexName;
+		}
+
+	}
+
+	/**
+	 * Return the index of a given attribute
+	 */
+	private int get_index_for_attribute(final String aAttributeName) {
+		final int tmpIndex = -1;
+
+		if (aAttributeName.trim().equals("")) {
+			return tmpIndex;
+		}
+
+		for (int i = 0; i < attributeNameList.length; i++) {
+			if (attributeNameList[i].trim().equalsIgnoreCase(aAttributeName)) {
+				return i;
+			}
+		}
+
+		return tmpIndex;
+	}
+
+	/**
+	 * Read the device properties from database.
+	 */
+	public void get_device_property() throws DevFailed {
+		if (!Util._UseDb) {
+			return;
+		}
+		final String propnames[] = { "AttributeNameList", "PriorityList", "LogicalBoolean", "IndividualTimeout", "InternalReadingPeriod" };
+
+		final DbDatum dev_prop[] = get_db_device().get_property(propnames);
+		DbDatum tmpDbDatum = null;
+
+		int i = -1;
+
+		// Extract AttributeNameList value
+		if (!dev_prop[++i].is_empty()) {
+			attributeNameList = dev_prop[i].extractStringArray();
+		} else {
+			tmpDbDatum = get_db_device().get_property("AttributeNameList");
+			attributeNameList = new String[] { "" };
+			tmpDbDatum.insert(attributeNameList);
+			get_db_device().put_property(new DbDatum[] { tmpDbDatum });
+		}
+
+		// Extract PriorityList value
+		if (!dev_prop[++i].is_empty()) {
+			priorityList = dev_prop[i].extractStringArray();
+		} else {
+
+			tmpDbDatum = get_db_device().get_property("PriorityList");
+			priorityList = new String[] { "" };
+			tmpDbDatum.insert(priorityList);
+			get_db_device().put_property(new DbDatum[] { tmpDbDatum });
+		}
+
+		// Extract LogicalBoolean value
+		String logicalBooleanString;
+		if (!dev_prop[++i].is_empty()) {
+			logicalBooleanString = dev_prop[i].extractString();
+			logicalBoolean = LogicalGateType.valueOf(logicalBooleanString);
+			if (logicalBooleanString.trim().equals("")) {
+				logicalBoolean = LogicalGateType.NONE;
+				logicalBooleanString = LogicalGateType.NONE.toString();
+				tmpDbDatum = get_db_device().get_property("LogicalBoolean");
+				tmpDbDatum.insert(logicalBooleanString);
+				get_db_device().put_property(new DbDatum[] { tmpDbDatum });
+			}
+		} else {
+			tmpDbDatum = get_db_device().get_property("LogicalBoolean");
+			logicalBoolean = LogicalGateType.NONE;
+			tmpDbDatum.insert(LogicalGateType.NONE.toString());
+			get_db_device().put_property(new DbDatum[] { tmpDbDatum });
+		}
+
+		// Extract IndividualTimeout value
+		if (!dev_prop[++i].is_empty()) {
+			individualTimeout = dev_prop[i].extractLong();
+		} else {
+			tmpDbDatum = get_db_device().get_property("IndividualTimeout");
+			tmpDbDatum.insert(individualTimeout);
+			get_db_device().put_property(new DbDatum[] { tmpDbDatum });
+		}
+
+		// Extract InternalReadingPeriod value
+		if (!dev_prop[++i].is_empty()) {
+			internalReadingPeriod = dev_prop[i].extractLong();
+		} else {
+			tmpDbDatum = get_db_device().get_property("InternalReadingPeriod");
+			tmpDbDatum.insert(internalReadingPeriod);
+			get_db_device().put_property(new DbDatum[] { tmpDbDatum });
+		}
+	}
+
+	@Override
+	public void set_state(final DevState aState) {
+		super.set_state(aState);
+		if (m_lastState == null || !m_lastState.equals(aState)) {
+			m_lastState = aState;
+			attr_lastStateEvent = StateUtilities.getNameForState(m_lastState) + " at " + m_insertformat.format(new Date());
+		}
+	}
+
+	/**
+	 * Method always executed before command execution.
+	 */
+	@Override
+	public void always_executed_hook() {
+		get_logger().info("In always_executed_hook method()");
+		if (initTaskResult.isDone()) {
+			try {
+				deviceInitialized = initTaskResult.get();
+				// if init task has failed, retry it
+				if (!deviceInitialized) {
+					System.out.println("init failed so retrying ");
+					initTaskResult = initExecutor.submit(new InitTask());
+					return;
+				}
+			} catch (final InterruptedException e) {
+			} catch (final ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		get_logger().info("Exiting always_executed_hook method()");
+	}
+
+	/**
+	 * Method called by the write_attributes CORBA operation to write device
+	 * hardware.
+	 * 
+	 * @param attr_list
+	 *            vector of index in the attribute vector of attribute to be
+	 *            written
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public void write_attr_hardware(final Vector attr_list) throws DevFailed {
+		Util.out2.println("In write_attr_hardware for " + attr_list.size() + " attribute(s)");
+
+		get_logger().info("write_attr_hardware" + attr_list.size() + " attribute(s)");
+
+		for (int i = 0; i < attr_list.size(); i++) {
+			final WAttribute att = dev_attr.get_w_attr_by_ind(((Integer) attr_list.elementAt(i)).intValue());
+			final String attr_name = att.get_name();
+
+			// Switch on attribute name
+			// ---------------------------------
+			if (attr_name.equals("booleanResult")) {
+				final boolean tmpWriteBoolean = att.getBooleanWriteValue();
+				get_logger().info("write_attr_hardware booleanResult attribute " + tmpWriteBoolean);
+				if (tmpWriteBoolean) {
+					activate_all();
+				} else {
+					deactivage_all();
+				}
+
+			}
+		}
+	}
+
+	// ===================================================================
+	/**
+	 * Method called by the read_attributes CORBA operation to read device
+	 * hardware
+	 * 
+	 * @param attr_list
+	 *            Vector of index in the attribute vector of attribute to be
+	 *            read
+	 */
+	@SuppressWarnings("unchecked")
+	// ===================================================================
+	@Override
+	public void read_attr_hardware(final Vector attr_list) {
+		get_logger().info("In read_attr_hardware for " + attr_list.size() + " attribute(s)");
+		attr_booleanSpectrum_read = new short[attributeNameList.length];
+
+		Boolean a = null;
+		Boolean b = null;
+		for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
+			final String attrName = entry.getKey();
+			final double value = entry.getValue();
+			final int index = get_index_for_attribute(attrName);
+			if (value == 1) {
+				attr_booleanSpectrum_read[index] = 1;
+				a = true;
+			} else {
+				attr_booleanSpectrum_read[index] = 0;
+				b = false;
+			}
+
+		}
+		if (a == null) {
+			a = false;
+		}
+		if (b == null) {
+			b = true;
+		}
+		switch (logicalBoolean) {
+			case NONE:
+				attr_booleanResult = false;
+				break;
+			case XOR:
+				attr_booleanResult = a ^ b;
+				break;
+			case OR:
+				attr_booleanResult = a | b;
+				break;
+			case AND:
+				attr_booleanResult = a & b;
+				break;
+		}
+	}
+
+	// ===================================================================
+	/**
+	 * Method called by the read_attributes CORBA operation to set internal
+	 * attribute value.
+	 * 
+	 * @param attr
+	 *            reference to the Attribute object
+	 */
+	// ===================================================================
+	@Override
+	public void read_attr(final Attribute attr) throws DevFailed {
+		final String attr_name = attr.get_name();
+		get_logger().info("In read_attr for attribute " + attr_name);
+
+		// attr_spectrumResult_read update in ValueUpdater Thread
+		if (attr_name == "spectrumResult") {
+			attr_spectrumResult_read = new double[attributeNameList.length];
+			for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
+				final String attrName = entry.getKey();
+				final double value = entry.getValue();
+				final int index = get_index_for_attribute(attrName);
+				attr_spectrumResult_read[index] = value;
+			}
+			attr.set_value(attr_spectrumResult_read, attr_spectrumResult_read.length);
+		} else if (attr_name == "attributesQualityList") {
+			attr_attributesQualityList_read = attrQualityManager.getQualityArray();
+			attr.set_value(attr_attributesQualityList_read, attr_attributesQualityList_read.length);
+		} else if (attr_name == "attributesNumberPriorityList") {
+			attr_attributesNumberPriorityList_read = attrQualityManager.getQualityNumberArray();
+			attr.set_value(attr_attributesNumberPriorityList_read, attr_attributesNumberPriorityList_read.length);
+		} else if (attr_name == "booleanSpectrum") {
+			attr.set_value(attr_booleanSpectrum_read, attr_booleanSpectrum_read.length);
+		} else if (attr_name == "booleanResult") {
+			attr.set_value(attr_booleanResult);
+		} else if (attr_name.equals("lastStateEvent")) {
+			attr.set_value(attr_lastStateEvent);
+		} else if (attr_name == "attributesResultReport") {
+			attr_attributesResultReport_read = new String[attributeResultReportMap.size()];
+			int tmpIndex = 0;
+			for (final Map.Entry<String, String> entry : attributeResultReportMap.entrySet()) {
+				final String key = entry.getKey();
+				attr_attributesResultReport_read[tmpIndex] = key + "->" + entry.getValue();
+				tmpIndex++;
+			}
+			attr.set_value(attr_attributesResultReport_read, attr_attributesResultReport_read.length);
+		} else if (attr_name.equals("version")) {
+			attr.set_value(version);
+		}
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "GetPriorityForQuality" on device. This command return
+	 * the priority for a given quality
+	 */
+	// =========================================================
+	public short get_priority_for_quality(final String argin) throws DevFailed {
+		short argout = 0;
+		get_logger().info("Entering get_priority_for_state()");
+		argout = (short) attrQualityManager.getPriorityForQuality(argin);
+		get_logger().info("Exiting get_priority_for_state()");
+		return argout;
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "GetTangoQualities" on device. This command return the
+	 * list of possibles qualities
+	 */
+	// =========================================================
+	public String[] get_tango_qualities() throws DevFailed {
+		get_logger().info("Entering get_tango_states()");
+		get_logger().info("Exiting get_tango_states()");
+		return QualityUtilities.QUALITYIST;
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "GetAttributeNameForIndex" on device. This command return
+	 * the attribute of an associated index
+	 */
+	// =========================================================
+	public String get_attribute_name_for_index(final short argin) throws DevFailed {
+		get_logger().info("Entering get_attribute_name_for_index()");
+		String argout = "Unknown Index";
+		if (attributeNameList != null && argin > -1 && argin < attributeNameList.length) {
+			argout = attributeNameList[argin];
+		}
+		get_logger().info("Exiting get_attribute_name_for_index()");
+		return argout;
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "GetLogicalChoices" on device. This command return the
+	 * list of possibles logical gates
+	 */
+	// =========================================================
+	public String[] get_logical_boolean() throws DevFailed {
+		get_logger().info("Entering get_tango_states()");
+		final LogicalGateType[] values = LogicalGateType.values();
+		final String[] logicalChoices = new String[values.length];
+		for (int i = 0; i < logicalChoices.length; i++) {
+			logicalChoices[i] = values[i].toString();
+		}
+		get_logger().info("Exiting get_tango_states()");
+		return logicalChoices;
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "SetAllValues" on device. This command write the given
+	 * value on all the attributes
+	 */
+	// =========================================================
+	public void set_all_values(final double argin) throws DevFailed {
+		get_logger().info("Entering set_all_values()");
+		// System.out.println(m_initialized);
+		// Do nothing if the device is in error
+		if (!deviceInitialized) {
+			Except.throw_exception("INIT_ERROR", "Device not correctly initialized", this.getClass() + ".set_all_values");
+			return;
+		}
+
+		write_attribute(argin);
+
+		get_logger().info("Exiting set_all_values()");
+	}
+
+	public void write_attribute(final double argin) throws DevFailed {
+
+		get_logger().info("writing " + argin);
+		if (Double.isNaN(argin)) {
+			return;
+		}
+
+		attributeGroup.insert(new Double(argin).toString());
+		attributeGroup.write();
+	}
+
+	private enum PropertyType {
+		FORMAT, UNIT, ALARM_MIN, ALARM_MAX, MIN_VAL, MAX_VAL, LABEL;
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "SetAllFormat" on device. This command set the format
+	 * property eg : %6.3f on all the attributes
+	 */
+	// =========================================================
+	public void set_all_format(final String argin) throws DevFailed {
+		get_logger().info("Entering set_all_format()");
+		setAttributeProperty(argin, PropertyType.FORMAT);
+		get_logger().info("Exiting set_all_format()");
+	}
+
+	private void setAttributeProperty(final String property, final PropertyType type) throws DevFailed {
+		// Get each proxy
+		for (int i = 0; i < attributeNameList.length; i++) {
+			final DeviceProxy tmpDevicePoxy = attributeGroup.getGroup().getDevice(attributeNameList[i]);
+			System.out.println("tmpDevicePoxy=" + tmpDevicePoxy.get_name() + "/" + attributeNameArray[i]);
+
+			final String tmpDeviceName = tmpDevicePoxy.get_name();
+			final AttributeInfo tmpAttributeInfo = tmpDevicePoxy.get_attribute_info(attributeNameArray[i]);
+			switch (type) {
+				case FORMAT:
+					tmpAttributeInfo.format = property;
+					break;
+				case UNIT:
+					tmpAttributeInfo.unit = property;
+					break;
+				case ALARM_MIN:
+					tmpAttributeInfo.min_alarm = property;
+					break;
+				case ALARM_MAX:
+					tmpAttributeInfo.max_alarm = property;
+					break;
+				case MIN_VAL:
+					tmpAttributeInfo.min_value = property;
+					break;
+				case MAX_VAL:
+					tmpAttributeInfo.max_value = property;
+					break;
+				case LABEL:
+					tmpAttributeInfo.label = property;
+					break;
+			}
+
+			try {
+				tmpDevicePoxy.set_attribute_info(new AttributeInfo[] { tmpAttributeInfo });
+				// Arrived here the command is SUCCESS
+				attributeResultReportMap.put(tmpDeviceName + "/" + attributeNameArray[i], m_insertformat.format(new Date()) + " : Set Format property to " + property + " : SUCCESS");
+			} catch (final DevFailed e) {
+				attributeResultReportMap.put(tmpDeviceName + "/" + attributeNameArray[i], m_insertformat.format(new Date()) + " : Set Unit property to " + property + " : FAILED");
+				throw e;
+			}
+		}
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "SetAllUnit" on device. This command set the Unit
+	 * property eg : Volt on all the attributes
+	 */
+	// =========================================================
+	public void set_all_unit(final String argin) throws DevFailed {
+		get_logger().info("Entering set_all_unit()");
+		setAttributeProperty(argin, PropertyType.UNIT);
+		get_logger().info("Exiting set_all_unit()");
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "SetAllMinValue" on device. This command set the minimum
+	 * value property on all the attributes
+	 */
+	// =========================================================
+	public void set_all_min_value(final double argin) throws DevFailed {
+		get_logger().info("Entering set_all_min_value()");
+		setAttributeProperty(String.valueOf(argin), PropertyType.MIN_VAL);
+		get_logger().info("Exiting set_all_min_value()");
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "SetAllMaxValue" on device. This command set the maximum
+	 * value property on all the attributes
+	 */
+	// =========================================================
+	public void set_all_max_value(final double argin) throws DevFailed {
+		get_logger().info("Entering set_all_max_value()");
+		setAttributeProperty(String.valueOf(argin), PropertyType.MAX_VAL);
+		get_logger().info("Exiting set_all_max_value()");
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "SetAllMinAlarm" on device. This command set the minimum
+	 * alarm value property on all the attributes
+	 */
+	// =========================================================
+	public void set_all_min_alarm(final double argin) throws DevFailed {
+		get_logger().info("Entering set_all_min_alarm()");
+		setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MIN);
+		get_logger().info("Exiting set_all_min_alarm()");
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "SetAllMaxAlarm" on device. This command set the maximum
+	 * alarm value property on all the attributes
+	 */
+	// =========================================================
+	public void set_all_max_alarm(final double argin) throws DevFailed {
+		get_logger().info("Entering set_all_max_alarm()");
+		setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MAX);
+		get_logger().info("Exiting set_all_max_alarm()");
+	}
+
+	// =========================================================
+	/**
+	 * Execute command "SetAllLabel" on device. This command set the Label
+	 * property on all the attributes
+	 */
+	// =========================================================
+	public void set_all_label(final String argin) throws DevFailed {
+		get_logger().info("Entering set_all_label()");
+		setAttributeProperty(argin, PropertyType.LABEL);
+		get_logger().info("Exiting set_all_label()");
+	}
+
+	/**
+	 * Execute command "ActivateAll" on device. This command write 1 or true on
+	 * all the attributes
+	 */
+	public void activate_all() throws DevFailed {
+		get_logger().info("Entering activate_all()");
+		set_all_values(1);
+		get_logger().info("Exiting activate_all()");
+	}
+
+	/**
+	 * Execute command "DeactivateAll" on device. This command write 0 or false
+	 * on all the attributes
+	 */
+	public void deactivage_all() throws DevFailed {
+		get_logger().info("Entering deactivage_all()");
+		set_all_values(0);
+		get_logger().info("Exiting deactivage_all()");
+	}
+
+	public class ValueReader implements Runnable {
+
+		@Override
+		public void run() {
+			valueReader();
+		}
+
+		public void valueReader() {
+
+			GroupAttrReplyList resultGroup = null;
+			// read attributes
+			try {
+				resultGroup = attributeGroup.read();
+			} catch (final DevFailed devFailed) {
+				set_state(faultState);
+				set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot read: \n" + TangoUtil.getDevFailedString(devFailed));
+			} catch (final Exception exception) {
+				set_state(faultState);
+				set_status(m_insertformat.format(new Date()) + " : Unexpected Error, cannot read: \n" + Except.str_exception(exception));
+			}
+
+			// extract results
+			boolean tmpHasFailed = false;
+			final Enumeration<?> enumeration2 = resultGroup.elements();
+			DeviceAttribute tmpDeviceAttribute = null;
+			while (enumeration2.hasMoreElements()) {
+				final GroupAttrReply tmpOneResult = (GroupAttrReply) enumeration2.nextElement();
+				String tmpDeviceName = "";
+				tmpDeviceName = tmpOneResult.dev_name();
+				final String attrName = tmpOneResult.obj_name();
+				AttrQuality tmpQuality = AttrQuality.ATTR_INVALID;
+				try {
+					tmpDeviceAttribute = tmpOneResult.get_data();
+					double tmpReadValue = Double.NaN;
+					tmpReadValue = AttributeHelper.extractToDouble(tmpDeviceAttribute);
+					tmpQuality = tmpDeviceAttribute.getQuality();
+					attributeValueMap.put(tmpDeviceName + "/" + attrName, tmpReadValue);
+					attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName, tmpQuality);
+				} catch (final DevFailed devFailed) {
+					tmpHasFailed = true;
+					attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName, tmpQuality);
+					attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat.format(new Date()) + " : " + TangoUtil.getDevFailedString(devFailed));
+					devFailed.printStackTrace();
+				} catch (final Exception exception) {
+					tmpHasFailed = true;
+					attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName, tmpQuality);
+					attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat.format(new Date()) + " : " + Except.str_exception(exception));
+					exception.printStackTrace();
+				}
+			}
+
+			if (tmpHasFailed) {
+				set_state(faultState);
+				set_status(m_insertformat.format(new Date()) + " : Error see attributesResultReport");
+			} else {
+				set_state(attrQualityManager.getHighestPriorityState());
+				set_status("At least one attribute is of quality " + attrQualityManager.getHighestPriorityQualityAsString());
+			}
+		}
+	}
+
+	public static void main(final String argv[]) {
+		final ResourceBundle rb = ResourceBundle.getBundle("fr.soleil.attributecomposer.application");
+		version = rb.getString("project.version");
+		System.out.println("VERSION " + version);
+
+		try {
+			final Util tg = Util.init(argv, "AttributeComposer");
+			tg.server_init();
+			System.out.println("Ready to accept request");
+			tg.server_run();
+		} catch (final OutOfMemoryError ex) {
+			System.err.println("Can't allocate memory !!!!");
+			System.err.println("Exiting");
+		} catch (final UserException ex) {
+			Except.print_exception(ex);
+			System.err.println("Received a CORBA user exception");
+			System.err.println("Exiting");
+		} catch (final SystemException ex) {
+			Except.print_exception(ex);
+			System.err.println("Received a CORBA system exception");
+			System.err.println("Exiting");
+		}
+		System.exit(-1);
+
+	}
+
+	@Override
+	public void delete_device() throws DevFailed {
+		// Clear all the commands and empty the tables
+		clearAll();
+	}
 
 }
