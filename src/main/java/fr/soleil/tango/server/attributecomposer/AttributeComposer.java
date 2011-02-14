@@ -99,9 +99,10 @@ public class AttributeComposer {
 		} catch (final DevFailed devFailed) {
 		    tmpHasFailed = true;
 		    qualityManager.putAttributeQuality(deviceName + "/" + attrName, quality);
-		    attributeResultReportMap.put(deviceName + "/" + attrName, dateInsertformat
-			    .format(new Date())
-			    + " : " + TangoUtil.getDevFailedString(devFailed));
+		    attributeResultReportMap.put(
+			    deviceName + "/" + attrName,
+			    dateInsertformat.format(new Date()) + " : "
+				    + TangoUtil.getDevFailedString(devFailed));
 		    devFailed.printStackTrace();
 		}
 	    }
@@ -145,10 +146,9 @@ public class AttributeComposer {
 	final ResourceBundle rb = ResourceBundle
 		.getBundle("fr.soleil.AttributeComposer.application");
 	version = rb.getString("project.version");
-	final String[] arg = new String[] { "test" };
 	try {
 	    ServerManager.getInstance().addClass("" + "AttributeComposer", AttributeComposer.class);
-	    ServerManager.getInstance().start(arg, "AttributeComposer");
+	    ServerManager.getInstance().start(args, "AttributeComposer");
 	} catch (final DevFailed e) {
 	    logger.debug(DevFailedUtils.toString(e));
 	}
@@ -402,8 +402,8 @@ public class AttributeComposer {
 		// If the custom state exist
 		if (QualityUtilities.isQualityExist(tmpQualityName)) {
 		    final int tmpPriority = Integer.valueOf(token.nextToken().trim());
-		    qualityManager.putQualityPriority(QualityUtilities
-			    .getQualityForName(tmpQualityName), tmpPriority);
+		    qualityManager.putQualityPriority(
+			    QualityUtilities.getQualityForName(tmpQualityName), tmpPriority);
 		}
 	    }
 	}
