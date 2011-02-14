@@ -48,5 +48,9 @@
 			<groupId>fr.soleil.lib</groupId>
 			<artifactId>dtu</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.tango</groupId>
+			<artifactId>JTangoServer</artifactId>
+		</dependency>
 	</dependencies>
 </project>
