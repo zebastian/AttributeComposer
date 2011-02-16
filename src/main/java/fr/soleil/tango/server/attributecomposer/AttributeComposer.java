@@ -2,7 +2,6 @@ package fr.soleil.tango.server.attributecomposer;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -30,17 +29,11 @@ import org.tango.server.idl4.dynamic.DynamicManager;
 import org.tango.utils.DevFailedUtils;
 
 import AttributeComposer.PriorityQualityManager;
-import fr.esrf.Tango.AttrQuality;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.TangoApi.AttributeInfo;
-import fr.esrf.TangoApi.DeviceAttribute;
 import fr.esrf.TangoApi.DeviceProxy;
 import fr.esrf.TangoApi.QualityUtilities;
-import fr.esrf.TangoApi.Group.GroupAttrReply;
-import fr.esrf.TangoApi.Group.GroupAttrReplyList;
-import fr.soleil.device.utils.AttributeHelper;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
-import fr.soleil.tango.util.TangoUtil;
 
 @Device
 public class AttributeComposer {
@@ -56,84 +49,15 @@ public class AttributeComposer {
 	ALARM_MAX, ALARM_MIN, FORMAT, LABEL, MAX_VAL, MIN_VAL, UNIT;
     }
 
-    public class ValueReader implements Runnable {
-	@Override
-	public void run() {
-	    valueReader();
-	}
-
-	public void valueReader() {
-	    xlogger.entry();
-	    GroupAttrReplyList resultGroup = null;
-	    // read attributes
-	    try {
-		resultGroup = attributeGroup.read();
-	    } catch (final DevFailed devFailed) {
-		setState(DeviceState.FAULT);
-		status = dateInsertformat.format(new Date())
-			+ " : Unexpected Error, cannot read: \n"
-			+ TangoUtil.getDevFailedString(devFailed);
-	    }
-
-	    // extract results
-	    boolean tmpHasFailed = false;
-	    final Enumeration<?> enumeration = resultGroup.elements();
-	    DeviceAttribute deviceAttribute = null;
-	    String deviceName;
-	    GroupAttrReply oneResult = null;
-	    String attrName = null;
-	    AttrQuality quality;
-
-	    while (enumeration.hasMoreElements()) {
-		oneResult = (GroupAttrReply) enumeration.nextElement();
-		quality = AttrQuality.ATTR_INVALID;
-		deviceName = oneResult.dev_name();
-		attrName = oneResult.obj_name();
-		try {
-		    deviceAttribute = oneResult.get_data();
-		    double tmpReadValue = Double.NaN;
-		    tmpReadValue = AttributeHelper.extractToDouble(deviceAttribute);
-		    quality = deviceAttribute.getQuality();
-		    attributeValueMap.put(deviceName + "/" + attrName, tmpReadValue);
-		    qualityManager.putAttributeQuality(deviceName + "/" + attrName, quality);
-		} catch (final DevFailed devFailed) {
-		    tmpHasFailed = true;
-		    qualityManager.putAttributeQuality(deviceName + "/" + attrName, quality);
-		    attributeResultReportMap.put(
-			    deviceName + "/" + attrName,
-			    dateInsertformat.format(new Date()) + " : "
-				    + TangoUtil.getDevFailedString(devFailed));
-		    devFailed.printStackTrace();
-		}
-	    }
-	    logger.debug("valueReader -> tmpHasFailed = " + tmpHasFailed);
-	    if (tmpHasFailed) {
-		setState(DeviceState.FAULT);
-		status = dateInsertformat.format(new Date())
-			+ " : Error see attributesResultReport";
-	    } else {
-		setState(DeviceState.getDeviceState(qualityManager.getHighestPriorityState()));
-		status = "At least one attribute is of quality "
-			+ qualityManager.getHighestPriorityQualityAsString();
-	    }
-	    xlogger.exit();
-	}
-    }
-
     /**
      * SimpleDateFormat to timeStamp the error messages
      */
-    public static final SimpleDateFormat dateInsertformat = new SimpleDateFormat(
+    private static final SimpleDateFormat dateInsertformat = new SimpleDateFormat(
 	    "dd-MM-yyyy HH:mm:ss");
 
     private static Logger logger = LoggerFactory.getLogger(AttributeComposer.class);
 
-    /**
-     * The number version of the device
-     */
-    @SuppressWarnings("unused")
-    @Attribute
-    private static String version;
+    private static String versionStatic;
 
     private final static XLogger xlogger = XLoggerFactory.getXLogger(AttributeComposer.class);
 
@@ -142,14 +66,16 @@ public class AttributeComposer {
      */
     public static void main(final String[] args) {
 	// VH: TODO too platform dependant
+	System.out.println("mian");
 	System.setProperty("TANGO_HOST", "calypso:20001");
 	final ResourceBundle rb = ResourceBundle
 		.getBundle("fr.soleil.AttributeComposer.application");
-	version = rb.getString("project.version");
+	versionStatic = rb.getString("project.version");
 	try {
-	    ServerManager.getInstance().addClass("" + "AttributeComposer", AttributeComposer.class);
+	    ServerManager.getInstance().addClass("AttributeComposer", AttributeComposer.class);
 	    ServerManager.getInstance().start(args, "AttributeComposer");
 	} catch (final DevFailed e) {
+	    DevFailedUtils.printDevFailed(e);
 	    logger.debug(DevFailedUtils.toString(e));
 	}
     }
@@ -238,6 +164,7 @@ public class AttributeComposer {
      */
     @DeviceProperty
     private String[] internalReadingPeriod;
+
     private long internalReadingPeriodL;
     /**
      * The last DevState
@@ -249,7 +176,6 @@ public class AttributeComposer {
     @SuppressWarnings("unused")
     @Attribute
     private String lastStateEvent = null;
-
     /**
      * The logical gates to apply on the list of attribute.
      */
@@ -263,6 +189,7 @@ public class AttributeComposer {
      */
     @DeviceProperty
     private String[] priorityList;
+
     PriorityQualityManager qualityManager;
     /**
      * Spectrum Result
@@ -280,10 +207,22 @@ public class AttributeComposer {
     @SuppressWarnings("unused")
     @Status
     private String status = null;
-
     @SuppressWarnings("unused")
     @DeviceProperty
     private String[] textTalkerDeviceProxy;
+
+    ValueReader valueReader;
+
+    /**
+     * The number version of the device
+     */
+    @SuppressWarnings("unused")
+    @Attribute
+    private String version;
+
+    /**
+     * Initialize the device.
+     */
 
     /**
      * Execute command "ActivateAll" on device. This command write 1 or true on
@@ -335,6 +274,7 @@ public class AttributeComposer {
 
     public String[] getAttributesResultReport() {
 	xlogger.entry();
+	attributeResultReportMap.putAll(valueReader.getAttributeResultReportMap());
 	int index = 0;
 	if (!attributeResultReportMap.isEmpty()) {
 	    logger.debug("copy of attributeResultReportMap in attributesResultReport");
@@ -353,6 +293,7 @@ public class AttributeComposer {
 
     public boolean[] getBooleanSpectrum() {
 	xlogger.entry();
+	attributeValueMap.putAll(valueReader.getAttributeValueMap());
 	booleanSpectrum = new boolean[attributeNameList.length];
 	Boolean a = null;
 	Boolean b = null;
@@ -383,6 +324,7 @@ public class AttributeComposer {
 	} else if (logicalBoolean[0].equalsIgnoreCase("AND")) {
 	    booleanResult = a & b;
 	}
+
 	xlogger.exit();
 	return booleanSpectrum;
     }
@@ -455,6 +397,7 @@ public class AttributeComposer {
 
     public double[] getSpectrumResult() {
 	xlogger.entry();
+	attributeValueMap.putAll(valueReader.getAttributeValueMap());
 	spectrumResult = new double[attributeNameList.length];
 	for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
 	    final String attrName = entry.getKey();
@@ -464,6 +407,11 @@ public class AttributeComposer {
 	}
 	xlogger.exit();
 	return spectrumResult;
+    }
+
+    public DeviceState getState() {
+	setState(valueReader.getState());
+	return state;
     }
 
     /**
@@ -496,13 +444,11 @@ public class AttributeComposer {
 	xlogger.exit();
     }
 
-    /**
-     * Initialize the device.
-     */
     @Init(lazyLoading = true)
     public void initDevice() throws DevFailed {
 	xlogger.entry();
 	setState(DeviceState.INIT);
+	version = versionStatic;
 	qualityManager = new PriorityQualityManager();
 	getCustomPriorityList();
 
@@ -513,7 +459,8 @@ public class AttributeComposer {
 	    internalReadingPeriodL = 3000;
 	}
 	executor = Executors.newScheduledThreadPool(1);
-	future = executor.scheduleAtFixedRate(new ValueReader(), 0L, internalReadingPeriodL,
+	valueReader = new ValueReader(attributeGroup, qualityManager);
+	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL,
 		TimeUnit.MILLISECONDS);
 	xlogger.exit();
     }
@@ -669,10 +616,15 @@ public class AttributeComposer {
 
     public void setState(final DeviceState aState) {
 	xlogger.entry();
-	if (!state.equals(aState)) {
+	if (state == null) {
+	    state = aState;
+	} else if (!state.equals(aState)) {
 	    lastState = state;
 	    lastStateEvent = lastState.toString() + " at " + dateInsertformat.format(new Date());
 	    state = aState;
+	}
+	if (valueReader != null) {
+	    status = valueReader.getStatus();
 	}
 	xlogger.exit();
     }
