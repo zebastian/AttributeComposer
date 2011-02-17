@@ -1,8 +1,10 @@
 package fr.soleil.tango.server.attributecomposer;
 
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.StringTokenizer;
@@ -19,6 +21,7 @@ import org.tango.server.idl4.DeviceState;
 import org.tango.server.idl4.ServerManager;
 import org.tango.server.idl4.annotation.Attribute;
 import org.tango.server.idl4.annotation.Command;
+import org.tango.server.idl4.annotation.Delete;
 import org.tango.server.idl4.annotation.Device;
 import org.tango.server.idl4.annotation.DeviceProperty;
 import org.tango.server.idl4.annotation.DynamicAttributeManagement;
@@ -52,8 +55,7 @@ public class AttributeComposer {
     /**
      * SimpleDateFormat to timeStamp the error messages
      */
-    private static final SimpleDateFormat dateInsertformat = new SimpleDateFormat(
-	    "dd-MM-yyyy HH:mm:ss");
+    private static final SimpleDateFormat dateInsertformat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 
     private static Logger logger = LoggerFactory.getLogger(AttributeComposer.class);
 
@@ -65,11 +67,7 @@ public class AttributeComposer {
      * MAIN
      */
     public static void main(final String[] args) {
-	// VH: TODO too platform dependant
-	System.out.println("mian");
-	System.setProperty("TANGO_HOST", "calypso:20001");
-	final ResourceBundle rb = ResourceBundle
-		.getBundle("fr.soleil.AttributeComposer.application");
+	final ResourceBundle rb = ResourceBundle.getBundle("fr.soleil.attributecomposer.application");
 	versionStatic = rb.getString("project.version");
 	try {
 	    ServerManager.getInstance().addClass("AttributeComposer", AttributeComposer.class);
@@ -86,6 +84,9 @@ public class AttributeComposer {
      */
     TangoGroupAttribute attributeGroup;
 
+    /**
+     * The attribute names without device name
+     */
     private String[] attributeNameArray;
 
     /**
@@ -100,7 +101,7 @@ public class AttributeComposer {
      * <attributeName, message report> the messages are generated during the
      * connexion, read or write instruction
      */
-    private final Map<String, String> attributeResultReportMap = new HashMap<String, String>();
+    private final Map<String, String> errorReportMap = new HashMap<String, String>();
 
     /**
      * The list of the attributes quality in priority number format. Call
@@ -166,10 +167,7 @@ public class AttributeComposer {
     private String[] internalReadingPeriod;
 
     private long internalReadingPeriodL;
-    /**
-     * The last DevState
-     */
-    private DeviceState lastState = null;
+
     /**
      * The last state event : STATE at DATE
      */
@@ -200,18 +198,19 @@ public class AttributeComposer {
      * The state of the device
      */
     @State
-    private DeviceState state = null;
+    private DeviceState state = DeviceState.ON;
     /**
      * The status of the device
      */
     @SuppressWarnings("unused")
     @Status
-    private String status = null;
+    private String status = "";
+
     @SuppressWarnings("unused")
     @DeviceProperty
     private String[] textTalkerDeviceProxy;
 
-    ValueReader valueReader;
+    private ValueReader valueReader;
 
     /**
      * The number version of the device
@@ -250,7 +249,7 @@ public class AttributeComposer {
     public String getAttributeNameForIndex(final short argin) throws DevFailed {
 	xlogger.entry();
 	String argout = "Unknown Index";
-	logger.debug("getAttributeNameForIndex -> argin = " + argin);
+	logger.debug("argin {}", argin);
 	if (attributeNameList != null && argin > -1 && argin < attributeNameList.length) {
 	    argout = attributeNameList[argin];
 	}
@@ -274,16 +273,14 @@ public class AttributeComposer {
 
     public String[] getAttributesResultReport() {
 	xlogger.entry();
-	attributeResultReportMap.putAll(valueReader.getAttributeResultReportMap());
+	errorReportMap.putAll(valueReader.getErrorReportMap());
 	int index = 0;
-	if (!attributeResultReportMap.isEmpty()) {
-	    logger.debug("copy of attributeResultReportMap in attributesResultReport");
-	    attributesResultReport = new String[attributeResultReportMap.size()];
-	    for (final Map.Entry<String, String> entry : attributeResultReportMap.entrySet()) {
+	if (!errorReportMap.isEmpty()) {
+	    attributesResultReport = new String[errorReportMap.size()];
+	    for (final Map.Entry<String, String> entry : errorReportMap.entrySet()) {
 		attributesResultReport[index++] = entry.getKey() + "->" + entry.getValue();
 	    }
 	} else {
-	    logger.debug("attributeResultReportMap is empty");
 	    attributesResultReport = new String[1];
 	    attributesResultReport[index] = "no value";
 	}
@@ -332,7 +329,7 @@ public class AttributeComposer {
     /**
      * Get the custom priority list
      */
-    private void getCustomPriorityList() {
+    private void configureCustomPriorityList() {
 	xlogger.entry();
 	// Get the custom priority
 	for (final String element : priorityList) {
@@ -344,8 +341,7 @@ public class AttributeComposer {
 		// If the custom state exist
 		if (QualityUtilities.isQualityExist(tmpQualityName)) {
 		    final int tmpPriority = Integer.valueOf(token.nextToken().trim());
-		    qualityManager.putQualityPriority(
-			    QualityUtilities.getQualityForName(tmpQualityName), tmpPriority);
+		    qualityManager.putQualityPriority(QualityUtilities.getQualityForName(tmpQualityName), tmpPriority);
 		}
 	    }
 	}
@@ -354,15 +350,14 @@ public class AttributeComposer {
 
     private int getIndexForAttribute(final String aAttributeName) {
 	xlogger.entry();
-	logger.debug("getIndexForAttribute -> argin(aAttributeName) = " + aAttributeName);
+	int idx = -1;
 	for (int i = 0; i < attributeNameList.length; i++) {
 	    if (attributeNameList[i].trim().equalsIgnoreCase(aAttributeName)) {
-		return i;
+		idx = i;
 	    }
 	}
 	xlogger.exit();
-	// if no entry return -1
-	return -1;
+	return idx;
     }
 
     /**
@@ -388,8 +383,8 @@ public class AttributeComposer {
     @Command(name = "GetPriorityForQuality")
     public short getPriorityForQuality(final String argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("getPriorityForQuality -> argin = " + argin);
-	short argout = (short) qualityManager.getPriorityForQuality(argin);
+	logger.debug(" argin {}", argin);
+	final short argout = (short) qualityManager.getPriorityForQuality(argin);
 	xlogger.exit();
 	return argout;
 
@@ -410,7 +405,15 @@ public class AttributeComposer {
     }
 
     public DeviceState getState() {
-	setState(valueReader.getState());
+	if (valueReader != null) {
+	    final DeviceState newState = valueReader.getState();
+	    if (!state.equals(newState)) {
+		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
+		state = newState;
+		status = valueReader.getStatus();
+	    }
+
+	}
 	return state;
     }
 
@@ -428,11 +431,13 @@ public class AttributeComposer {
     /**
      * Creation of the group of devices
      */
-    private void groupCreation() throws DevFailed {
+    private void createTangoGroup() throws DevFailed {
 	xlogger.entry();
 	// If no property defined the devices is in STANDBY
 	if (attributeNameList.length > 0 || !attributeNameList[0].trim().isEmpty()) {
-	    attributeGroup = new TangoGroupAttribute("attribute composer", attributeNameList);
+	    // set to remove duplications
+	    final HashSet<String> set = new HashSet<String>(Arrays.asList(attributeNameList));
+	    attributeGroup = new TangoGroupAttribute("attribute composer", set.toArray(new String[set.size()]));
 	    attributeNameArray = new String[attributeNameList.length];
 	    int i = 0;
 	    for (final String attribute : attributeNameList) {
@@ -447,12 +452,11 @@ public class AttributeComposer {
     @Init(lazyLoading = true)
     public void initDevice() throws DevFailed {
 	xlogger.entry();
-	setState(DeviceState.INIT);
 	version = versionStatic;
 	qualityManager = new PriorityQualityManager();
-	getCustomPriorityList();
+	configureCustomPriorityList();
 
-	groupCreation();
+	createTangoGroup();
 	// create a timer to read attributes
 	internalReadingPeriodL = Long.parseLong(internalReadingPeriod[0]);
 	if (internalReadingPeriodL < 0) {
@@ -460,9 +464,19 @@ public class AttributeComposer {
 	}
 	executor = Executors.newScheduledThreadPool(1);
 	valueReader = new ValueReader(attributeGroup, qualityManager);
-	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL,
-		TimeUnit.MILLISECONDS);
+	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL, TimeUnit.MILLISECONDS);
 	xlogger.exit();
+    }
+
+    @Delete
+    public void deleteDevice() {
+	if (future != null) {
+	    future.cancel(true);
+	}
+	if (executor != null) {
+	    executor.shutdownNow();
+	}
+	dynMngt.clearAll();
     }
 
     /**
@@ -472,7 +486,7 @@ public class AttributeComposer {
     @Command(name = "SetAllFormat")
     public void setAllFormat(final String argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("setAllFormat -> argin = " + argin);
+	logger.debug("argin  {}", argin);
 	setAttributeProperty(argin, PropertyType.FORMAT);
 	xlogger.exit();
     }
@@ -484,7 +498,7 @@ public class AttributeComposer {
     @Command(name = "SetAllLabel")
     public void setAllLabel(final String argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("SetAllLabel -> argin = " + argin);
+	logger.debug("argin  {}", argin);
 	setAttributeProperty(argin, PropertyType.LABEL);
 	xlogger.exit();
     }
@@ -496,7 +510,7 @@ public class AttributeComposer {
     @Command(name = "SetAllMaxAlarm")
     public void setAllMaxAlarm(final double argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("SetAllMaxAlarm -> argin = " + argin);
+	logger.debug("argin  {}", argin);
 	setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MAX);
 	xlogger.exit();
     }
@@ -508,7 +522,7 @@ public class AttributeComposer {
     @Command(name = "SetAllMaxValue")
     public void setAllMaxValue(final double argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("setAllMaxValue -> argin = " + argin);
+	logger.debug("argin  {}", argin);
 	setAttributeProperty(String.valueOf(argin), PropertyType.MAX_VAL);
 	xlogger.exit();
     }
@@ -520,7 +534,7 @@ public class AttributeComposer {
     @Command(name = "SetAllMinAlarm")
     public void setAllMinAlarm(final double argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("setAllMinAlarm -> argin = " + argin);
+	logger.debug("argin  {}", argin);
 	setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MIN);
 	xlogger.exit();
     }
@@ -532,7 +546,7 @@ public class AttributeComposer {
     @Command(name = "SetAllMinValue")
     public void setAllMinValue(final double argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("setAllMinValue -> argin = " + argin);
+	logger.debug("argin {} ", argin);
 	setAttributeProperty(String.valueOf(argin), PropertyType.MIN_VAL);
 	xlogger.exit();
     }
@@ -544,7 +558,7 @@ public class AttributeComposer {
     @Command(name = "SetAllUnit")
     public void setAllUnit(final String argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("setAllUnit -> argin = " + argin);
+	logger.debug("argin  {}", argin);
 	setAttributeProperty(argin, PropertyType.UNIT);
 	xlogger.exit();
     }
@@ -556,16 +570,15 @@ public class AttributeComposer {
     @Command(name = "SetAllValues")
     public void setAllValues(final double argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("setAllValues -> argin = " + argin);
+	logger.debug("argin  {}", argin);
 	writeAttribute(argin);
 	xlogger.exit();
     }
 
-    private void setAttributeProperty(final String property, final PropertyType type)
-	    throws DevFailed {
+    private void setAttributeProperty(final String property, final PropertyType type) throws DevFailed {
 	xlogger.entry();
-	logger.debug("setAttributeProperty -> property = " + property);
-	logger.debug("setAttributeProperty -> type = " + type);
+	logger.debug("property {} ", property);
+	logger.debug("type {} ", type);
 	// Get each proxy
 	DeviceProxy devicePoxy;
 	String deviceName;
@@ -601,44 +614,23 @@ public class AttributeComposer {
 
 	    try {
 		devicePoxy.set_attribute_info(new AttributeInfo[] { attributeInfo });
-		attributeResultReportMap.put(deviceName + "/" + attributeNameArray[i],
-			dateInsertformat.format(new Date()) + " : Set " + type + " property to "
-				+ property + " : SUCCESS");
+		errorReportMap.put(deviceName + "/" + attributeNameArray[i], dateInsertformat.format(new Date())
+			+ " : Set " + type + " property to " + property + " : SUCCESS");
 	    } catch (final DevFailed e) {
-		attributeResultReportMap.put(deviceName + "/" + attributeNameArray[i],
-			dateInsertformat.format(new Date()) + " : Set " + type + " property to "
-				+ property + " : FAILED");
+		errorReportMap.put(deviceName + "/" + attributeNameArray[i], dateInsertformat.format(new Date())
+			+ " : Set " + type + " property to " + property + " : FAILED");
 		throw e;
 	    }
 	}
 	xlogger.exit();
     }
 
-    public void setState(final DeviceState aState) {
-	xlogger.entry();
-	if (state == null) {
-	    state = aState;
-	} else if (!state.equals(aState)) {
-	    lastState = state;
-	    lastStateEvent = lastState.toString() + " at " + dateInsertformat.format(new Date());
-	    state = aState;
-	}
-	if (valueReader != null) {
-	    status = valueReader.getStatus();
-	}
-	xlogger.exit();
-    }
-
     public void writeAttribute(final double argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("writeAttribute -> argin = " + argin);
-	if (Double.isNaN(argin)) {
-	    logger.debug("writeAttribute -> argin is not a double. Exit");
-	    xlogger.exit();
-	    return;
+	logger.debug("writing {}", argin);
+	if (!Double.isNaN(argin)) {
+	    attributeGroup.insert(Double.toString(argin));
 	}
-	attributeGroup.insert(new Double(argin).toString());
-	attributeGroup.write();
 	xlogger.exit();
     }
 }

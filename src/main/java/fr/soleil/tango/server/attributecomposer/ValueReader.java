@@ -9,6 +9,7 @@ import java.util.Map;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 import org.tango.server.idl4.DeviceState;
+import org.tango.utils.DevFailedUtils;
 
 import AttributeComposer.PriorityQualityManager;
 import fr.esrf.Tango.AttrQuality;
@@ -22,28 +23,23 @@ import fr.soleil.tango.util.TangoUtil;
 
 public class ValueReader implements Runnable {
 
-    private static final SimpleDateFormat dateInsertformat = new SimpleDateFormat(
-	    "dd-MM-yyyy HH:mm:ss");
-    private final static XLogger xlogger = XLoggerFactory.getXLogger(AttributeComposer.class);
-    TangoGroupAttribute attributeGroup;
-    private final Map<String, String> attributeResultReportMap = new HashMap<String, String>();
+    private static final SimpleDateFormat dateInsertformat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+    private final static XLogger xlogger = XLoggerFactory.getXLogger(ValueReader.class);
+    private final TangoGroupAttribute attributeGroup;
+    private final Map<String, String> errorReportMap = new HashMap<String, String>();
     private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
-    PriorityQualityManager qualityManager;
+    private final PriorityQualityManager qualityManager;
 
-    private DeviceState state;
+    private DeviceState state = DeviceState.UNKNOWN;
     private String status = null;
 
-    public ValueReader(TangoGroupAttribute attributeGroup, PriorityQualityManager qualityManager) {
+    public ValueReader(final TangoGroupAttribute attributeGroup, final PriorityQualityManager qualityManager) {
 	this.attributeGroup = attributeGroup;
 	this.qualityManager = qualityManager;
     }
 
-    public Map<String, String> getAttributeResultReportMap() {
-	return attributeResultReportMap;
-    }
-
-    public Map<String, Double> getAttributeValueMap() {
-	return attributeValueMap;
+    public Map<String, String> getErrorReportMap() {
+	return errorReportMap;
     }
 
     public DeviceState getState() {
@@ -79,14 +75,12 @@ public class ValueReader implements Runnable {
 	GroupAttrReply oneResult = null;
 	String attrName = null;
 	AttrQuality quality;
-
 	while (enumeration.hasMoreElements()) {
 	    oneResult = (GroupAttrReply) enumeration.nextElement();
 	    quality = AttrQuality.ATTR_INVALID;
 	    deviceName = oneResult.dev_name();
 	    attrName = oneResult.obj_name();
 	    try {
-		System.out.println("oneresult = " + oneResult.obj_name());
 		deviceAttribute = oneResult.get_data();
 		double tmpReadValue = Double.NaN;
 		tmpReadValue = AttributeHelper.extractToDouble(deviceAttribute);
@@ -96,11 +90,8 @@ public class ValueReader implements Runnable {
 	    } catch (final DevFailed devFailed) {
 		tmpHasFailed = true;
 		qualityManager.putAttributeQuality(deviceName + "/" + attrName, quality);
-		attributeResultReportMap.put(
-			deviceName + "/" + attrName,
-			dateInsertformat.format(new Date()) + " : "
-				+ TangoUtil.getDevFailedString(devFailed));
-		devFailed.printStackTrace();
+		errorReportMap.put(deviceName + "/" + attrName, dateInsertformat.format(new Date()) + " : "
+			+ DevFailedUtils.toString(devFailed));
 	    }
 	}
 	if (tmpHasFailed) {
@@ -108,9 +99,12 @@ public class ValueReader implements Runnable {
 	    status = dateInsertformat.format(new Date()) + " : Error see attributesResultReport";
 	} else {
 	    state = DeviceState.getDeviceState(qualityManager.getHighestPriorityState());
-	    status = "At least one attribute is of quality "
-		    + qualityManager.getHighestPriorityQualityAsString();
+	    status = "At least one attribute is of quality " + qualityManager.getHighestPriorityQualityAsString();
 	}
 	xlogger.exit();
+    }
+
+    public Map<String, Double> getAttributeValueMap() {
+	return attributeValueMap;
     }
 }
