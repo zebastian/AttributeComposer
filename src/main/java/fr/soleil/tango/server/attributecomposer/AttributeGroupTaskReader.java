@@ -21,10 +21,10 @@ import fr.soleil.device.utils.AttributeHelper;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
 import fr.soleil.tango.util.TangoUtil;
 
-public class ValueReader implements Runnable {
+public class AttributeGroupTaskReader implements Runnable {
 
     private static final SimpleDateFormat dateInsertformat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
-    private final static XLogger xlogger = XLoggerFactory.getXLogger(ValueReader.class);
+    private final static XLogger xlogger = XLoggerFactory.getXLogger(AttributeGroupTaskReader.class);
     private final TangoGroupAttribute attributeGroup;
     private final Map<String, String> errorReportMap = new HashMap<String, String>();
     private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
@@ -33,7 +33,7 @@ public class ValueReader implements Runnable {
     private DeviceState state = DeviceState.UNKNOWN;
     private String status = null;
 
-    public ValueReader(final TangoGroupAttribute attributeGroup, final PriorityQualityManager qualityManager) {
+    public AttributeGroupTaskReader(final TangoGroupAttribute attributeGroup, final PriorityQualityManager qualityManager) {
 	this.attributeGroup = attributeGroup;
 	this.qualityManager = qualityManager;
     }

@@ -210,7 +210,7 @@ public class AttributeComposer {
     @DeviceProperty
     private String[] textTalkerDeviceProxy;
 
-    private ValueReader valueReader;
+    private AttributeGroupTaskReader valueReader;
 
     /**
      * The number version of the device
@@ -463,7 +463,7 @@ public class AttributeComposer {
 	    internalReadingPeriodL = 3000;
 	}
 	executor = Executors.newScheduledThreadPool(1);
-	valueReader = new ValueReader(attributeGroup, qualityManager);
+	valueReader = new AttributeGroupTaskReader(attributeGroup, qualityManager);
 	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL, TimeUnit.MILLISECONDS);
 	xlogger.exit();
     }
