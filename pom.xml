@@ -12,7 +12,7 @@
 	<artifactId>AttributeComposer</artifactId>
 	<name>Attribute Composer</name>
 	<description>Attribute Composer Device Server</description>
-	<version>3.0.15-SNAPSHOT</version>
+	<version>3.0.15</version>
 	<scm>
 		<connection>${scm.connection.cvs.tango-ds}:Calculation/AttributeComposer</connection>
 		<developerConnection>${scm.developerConnection.cvs.tango-ds}:Calculation/AttributeComposer</developerConnection>
@@ -42,15 +42,45 @@
 	<dependencies>
 		<dependency>
 			<groupId>fr.esrf.tango</groupId>
-			<artifactId>TangORB</artifactId>
-		</dependency>
+			<artifactId>TangORB</artifactId><!--
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>log4j</groupId>
+					<artifactId>log4j</artifactId>
+				</exclusion>
+			</exclusions>
+		--></dependency>
 		<dependency>
 			<groupId>fr.soleil.lib</groupId>
 			<artifactId>dtu</artifactId>
-		</dependency>
+		<!--<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>log4j</groupId>
+					<artifactId>log4j</artifactId>
+				</exclusion>
+			</exclusions>
+		--></dependency>
 		<dependency>
 			<groupId>org.tango</groupId>
 			<artifactId>JTangoServer</artifactId>
-		</dependency>
+			<!--<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>log4j</groupId>
+					<artifactId>log4j</artifactId>
+				</exclusion>
+			</exclusions>
+		--></dependency>
 	</dependencies>
 </project>
