@@ -24,7 +24,7 @@ import org.tango.server.idl4.annotation.Command;
 import org.tango.server.idl4.annotation.Delete;
 import org.tango.server.idl4.annotation.Device;
 import org.tango.server.idl4.annotation.DeviceProperty;
-import org.tango.server.idl4.annotation.DynamicAttributeManagement;
+import org.tango.server.idl4.annotation.DynamicManagement;
 import org.tango.server.idl4.annotation.Init;
 import org.tango.server.idl4.annotation.State;
 import org.tango.server.idl4.annotation.Status;
@@ -146,7 +146,7 @@ public class AttributeComposer {
     @Attribute
     private boolean[] booleanSpectrum;
 
-    @DynamicAttributeManagement
+    @DynamicManagement
     DynamicManager dynMngt;
 
     private ScheduledExecutorService executor;
