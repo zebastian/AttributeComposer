@@ -43,7 +43,7 @@
 		<dependency>
 			<groupId>fr.esrf.tango</groupId>
 			<artifactId>TangORB</artifactId>
-			<exclusions>
+			<!--<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
 					<artifactId>slf4j-log4j12</artifactId>
@@ -53,7 +53,7 @@
 					<artifactId>log4j</artifactId>
 				</exclusion>
 			</exclusions>
-		</dependency>
+		--></dependency>
 		<dependency>
 			<groupId>fr.soleil.lib</groupId>
 			<artifactId>dtu</artifactId>
