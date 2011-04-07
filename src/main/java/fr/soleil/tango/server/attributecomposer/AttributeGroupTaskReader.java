@@ -17,9 +17,8 @@ import fr.esrf.Tango.DevFailed;
 import fr.esrf.TangoApi.DeviceAttribute;
 import fr.esrf.TangoApi.Group.GroupAttrReply;
 import fr.esrf.TangoApi.Group.GroupAttrReplyList;
-import fr.soleil.device.utils.AttributeHelper;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
-import fr.soleil.tango.util.TangoUtil;
+import fr.soleil.tango.clientapi.factory.InsertExtractFactory;
 
 public class AttributeGroupTaskReader implements Runnable {
 
@@ -31,9 +30,10 @@ public class AttributeGroupTaskReader implements Runnable {
     private final PriorityQualityManager qualityManager;
 
     private DeviceState state = DeviceState.UNKNOWN;
-    private String status = null;
+    private String status = "";
 
-    public AttributeGroupTaskReader(final TangoGroupAttribute attributeGroup, final PriorityQualityManager qualityManager) {
+    public AttributeGroupTaskReader(final TangoGroupAttribute attributeGroup,
+	    final PriorityQualityManager qualityManager) {
 	this.attributeGroup = attributeGroup;
 	this.qualityManager = qualityManager;
     }
@@ -57,49 +57,56 @@ public class AttributeGroupTaskReader implements Runnable {
 
     public void valueReader() {
 	xlogger.entry();
-	GroupAttrReplyList resultGroup = null;
-	// read attributes
 	try {
-	    resultGroup = attributeGroup.read();
-	} catch (final DevFailed devFailed) {
-	    state = DeviceState.FAULT;
-	    status = dateInsertformat.format(new Date()) + " : Unexpected Error, cannot read: \n"
-		    + TangoUtil.getDevFailedString(devFailed);
-	}
-
-	// extract results
-	boolean tmpHasFailed = false;
-	final Enumeration<?> enumeration = resultGroup.elements();
-	DeviceAttribute deviceAttribute = null;
-	String deviceName;
-	GroupAttrReply oneResult = null;
-	String attrName = null;
-	AttrQuality quality;
-	while (enumeration.hasMoreElements()) {
-	    oneResult = (GroupAttrReply) enumeration.nextElement();
-	    quality = AttrQuality.ATTR_INVALID;
-	    deviceName = oneResult.dev_name();
-	    attrName = oneResult.obj_name();
+	    GroupAttrReplyList resultGroup = null;
+	    // read attributes
 	    try {
-		deviceAttribute = oneResult.get_data();
-		double tmpReadValue = Double.NaN;
-		tmpReadValue = AttributeHelper.extractToDouble(deviceAttribute);
-		quality = deviceAttribute.getQuality();
-		attributeValueMap.put(deviceName + "/" + attrName, tmpReadValue);
-		qualityManager.putAttributeQuality(deviceName + "/" + attrName, quality);
+		resultGroup = attributeGroup.read();
 	    } catch (final DevFailed devFailed) {
-		tmpHasFailed = true;
-		qualityManager.putAttributeQuality(deviceName + "/" + attrName, quality);
-		errorReportMap.put(deviceName + "/" + attrName, dateInsertformat.format(new Date()) + " : "
-			+ DevFailedUtils.toString(devFailed));
+		state = DeviceState.FAULT;
+		status = dateInsertformat.format(new Date()) + " : Unexpected Error, cannot read: \n"
+			+ DevFailedUtils.toString(devFailed);
 	    }
-	}
-	if (tmpHasFailed) {
+
+	    // extract results
+	    boolean tmpHasFailed = false;
+	    final Enumeration<?> enumeration = resultGroup.elements();
+	    DeviceAttribute deviceAttribute = null;
+	    String deviceName;
+	    GroupAttrReply oneResult = null;
+	    String attrName = null;
+	    AttrQuality quality;
+	    while (enumeration.hasMoreElements()) {
+		oneResult = (GroupAttrReply) enumeration.nextElement();
+		quality = AttrQuality.ATTR_INVALID;
+		deviceName = oneResult.dev_name();
+		attrName = oneResult.obj_name();
+		try {
+		    deviceAttribute = oneResult.get_data();
+		    System.out.println(deviceAttribute.getName());
+		    System.out.println(deviceAttribute.getType());
+		    final double tmpReadValue = InsertExtractFactory.getScalarExtractor(deviceAttribute.getType(),
+			    deviceAttribute.getDataFormat()).extractRead(deviceAttribute, Double.class);
+		    quality = deviceAttribute.getQuality();
+		    attributeValueMap.put(deviceName + "/" + attrName, tmpReadValue);
+		    qualityManager.putAttributeQuality(deviceName + "/" + attrName, quality);
+		} catch (final DevFailed devFailed) {
+		    tmpHasFailed = true;
+		    qualityManager.putAttributeQuality(deviceName + "/" + attrName, quality);
+		    errorReportMap.put(deviceName + "/" + attrName, dateInsertformat.format(new Date()) + " : "
+			    + DevFailedUtils.toString(devFailed));
+		}
+	    }
+	    if (tmpHasFailed) {
+		state = DeviceState.FAULT;
+		status = dateInsertformat.format(new Date()) + " : Error see attributesResultReport";
+	    } else {
+		state = DeviceState.getDeviceState(qualityManager.getHighestPriorityState());
+		status = "At least one attribute is of quality " + qualityManager.getHighestPriorityQualityAsString();
+	    }
+	} catch (final Exception e) {
 	    state = DeviceState.FAULT;
-	    status = dateInsertformat.format(new Date()) + " : Error see attributesResultReport";
-	} else {
-	    state = DeviceState.getDeviceState(qualityManager.getHighestPriorityState());
-	    status = "At least one attribute is of quality " + qualityManager.getHighestPriorityQualityAsString();
+	    status = dateInsertformat.format(new Date()) + " Unexpected error " + e.getClass().getCanonicalName();
 	}
 	xlogger.exit();
     }
