@@ -173,7 +173,7 @@ public class AttributeComposer {
      */
     @SuppressWarnings("unused")
     @Attribute
-    private String lastStateEvent = null;
+    private String lastStateEvent = "";
     /**
      * The logical gates to apply on the list of attribute.
      */
@@ -465,6 +465,7 @@ public class AttributeComposer {
 	executor = Executors.newScheduledThreadPool(1);
 	valueReader = new AttributeGroupTaskReader(attributeGroup, qualityManager);
 	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL, TimeUnit.MILLISECONDS);
+
 	xlogger.exit();
     }
 
