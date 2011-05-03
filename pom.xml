@@ -33,7 +33,7 @@
 				</executions>
 				<configuration>
 					<mainClass>
-						AttributeComposer.AttributeComposer
+						fr.soleil.tango.server.attributecomposer.AttributeComposer
 					</mainClass>
 				</configuration>
 			</plugin>
@@ -43,20 +43,6 @@
 		<dependency>
 			<groupId>fr.esrf.tango</groupId>
 			<artifactId>TangORB</artifactId>
-			<!--<exclusions>
-				<exclusion>
-					<groupId>org.slf4j</groupId>
-					<artifactId>slf4j-log4j12</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>log4j</groupId>
-					<artifactId>log4j</artifactId>
-				</exclusion>
-			</exclusions>
-		--></dependency>
-		<dependency>
-			<groupId>fr.soleil.lib</groupId>
-			<artifactId>dtu</artifactId>
 			<!--<exclusions> <exclusion> <groupId>org.slf4j</groupId> <artifactId>slf4j-log4j12</artifactId> </exclusion> <exclusion> 
 				<groupId>log4j</groupId> <artifactId>log4j</artifactId> </exclusion> </exclusions> -->
 		</dependency>
@@ -64,6 +50,13 @@
 			<groupId>org.tango</groupId>
 			<artifactId>JTangoClientLang</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>fr.soleil.lib</groupId>
+			<artifactId>dtu</artifactId>
+			<!--<exclusions> <exclusion> <groupId>org.slf4j</groupId> <artifactId>slf4j-log4j12</artifactId> </exclusion> <exclusion> 
+				<groupId>log4j</groupId> <artifactId>log4j</artifactId> </exclusion> </exclusions> -->
+		</dependency>
+
 		<dependency>
 			<groupId>org.tango</groupId>
 			<artifactId>JTangoServer</artifactId>
