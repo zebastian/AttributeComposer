@@ -12,9 +12,12 @@
 //
 // $Author: abeilleg $
 //
-// $Revision: 1.18 $
+// $Revision: 1.19 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.18  2011/04/15 12:45:12  abeilleg
+// compile with dependencies changes
+//
 // Revision 1.17  2011/01/04 10:43:21  gramer
 // automatic creation of PriorityList property
 //
@@ -133,8 +136,10 @@ import fr.esrf.TangoDs.Util;
 import fr.esrf.TangoDs.WAttribute;
 import fr.soleil.device.utils.AttributeHelper;
 import fr.soleil.device.utils.DynamicAttributesHelper;
+import fr.soleil.tango.attributecomposer.PriorityQualityManager;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
 
+@Deprecated
 public class AttributeComposer extends DeviceImpl implements TangoConst {
 
     protected int state;

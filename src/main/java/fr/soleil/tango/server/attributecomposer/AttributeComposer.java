@@ -31,11 +31,11 @@ import org.tango.server.idl4.annotation.Status;
 import org.tango.server.idl4.dynamic.DynamicManager;
 import org.tango.utils.DevFailedUtils;
 
-import AttributeComposer.PriorityQualityManager;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.TangoApi.AttributeInfo;
 import fr.esrf.TangoApi.DeviceProxy;
 import fr.esrf.TangoApi.QualityUtilities;
+import fr.soleil.tango.attributecomposer.PriorityQualityManager;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
 
 @Device

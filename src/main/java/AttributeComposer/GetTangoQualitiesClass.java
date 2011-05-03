@@ -6,13 +6,16 @@
 // Description:  Java source code for the command TemplateClass of the
 //               AttributeComposer class.
 //
-// $Author: gramer $
+// $Author: abeilleg $
 //
-// $Revision: 1.2 $
+// $Revision: 1.3 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.2  2011/01/04 10:52:51  gramer
+// fix bug http://controle/mantis/view.php?id=17846
+//
 // Revision 1.1  2007/09/25 16:03:51  katyho
-// Use TangORB-5.1.2 that fixe Bug in Group and problème in java server.
+// Use TangORB-5.1.2 that fixe Bug in Group and problï¿½me in java server.
 // Use only group of TangORB
 //
 // Revision 1.7  2007/03/28 12:21:19  katyho
@@ -35,8 +38,8 @@
 //=============================================================================
 
 /**
- * @author	$Author: gramer $
- * @version	$Revision: 1.2 $
+ * @author	$Author: abeilleg $
+ * @version	$Revision: 1.3 $
  */
 package AttributeComposer;
 
@@ -54,93 +57,96 @@ import fr.esrf.TangoDs.Util;
  * Class Description: This command return the list of the TANGO states and their
  * associated values. Ex : ON = 0, OFF=1
  */
-
+@Deprecated
 public class GetTangoQualitiesClass extends Command implements TangoConst {
-	// ===============================================================
-	/**
-	 * Constructor for Command class GetTangoStatesClass
-	 * 
-	 * @param name
-	 *            command name
-	 * @param in
-	 *            argin type
-	 * @param out
-	 *            argout type
-	 */
-	// ===============================================================
-	public GetTangoQualitiesClass(String name, int in, int out) {
-		super(name, in, out);
+    // ===============================================================
+    /**
+     * Constructor for Command class GetTangoStatesClass
+     * 
+     * @param name
+     *            command name
+     * @param in
+     *            argin type
+     * @param out
+     *            argout type
+     */
+    // ===============================================================
+    public GetTangoQualitiesClass(final String name, final int in, final int out) {
+	super(name, in, out);
+    }
+
+    // ===============================================================
+    /**
+     * Constructor for Command class GetTangoStatesClass
+     * 
+     * @param name
+     *            command name
+     * @param in
+     *            argin type
+     * @param in_comments
+     *            argin description
+     * @param out
+     *            argout type
+     * @param out_comments
+     *            argout description
+     */
+    // ===============================================================
+    public GetTangoQualitiesClass(final String name, final int in, final int out, final String in_comments,
+	    final String out_comments) {
+	super(name, in, out, in_comments, out_comments);
+    }
+
+    // ===============================================================
+    /**
+     * Constructor for Command class GetTangoStatesClass
+     * 
+     * @param name
+     *            command name
+     * @param in
+     *            argin type
+     * @param in_comments
+     *            argin description
+     * @param out
+     *            argout type
+     * @param out_comments
+     *            argout description
+     * @param level
+     *            The command display type OPERATOR or EXPERT
+     */
+    // ===============================================================
+    public GetTangoQualitiesClass(final String name, final int in, final int out, final String in_comments,
+	    final String out_comments, final DispLevel level) {
+	super(name, in, out, in_comments, out_comments, level);
+    }
+
+    // ===============================================================
+    /**
+     * return the result of the device's command.
+     */
+    // ===============================================================
+    @Override
+    public Any execute(final DeviceImpl device, final Any in_any) throws DevFailed {
+	if (!(device instanceof AttributeComposer)) {
+	    Except.throw_exception("DEVICE_ERROR", "Device parameter is not instance of AttributeComposer",
+		    "AttributeComposer");
 	}
 
-	// ===============================================================
-	/**
-	 * Constructor for Command class GetTangoStatesClass
-	 * 
-	 * @param name
-	 *            command name
-	 * @param in
-	 *            argin type
-	 * @param in_comments
-	 *            argin description
-	 * @param out
-	 *            argout type
-	 * @param out_comments
-	 *            argout description
-	 */
-	// ===============================================================
-	public GetTangoQualitiesClass(String name, int in, int out, String in_comments, String out_comments) {
-		super(name, in, out, in_comments, out_comments);
-	}
+	Util.out2.println("GetTangoQualitiesClass.execute(): arrived");
+	return insert(((AttributeComposer) device).get_tango_qualities());
+    }
 
-	// ===============================================================
-	/**
-	 * Constructor for Command class GetTangoStatesClass
-	 * 
-	 * @param name
-	 *            command name
-	 * @param in
-	 *            argin type
-	 * @param in_comments
-	 *            argin description
-	 * @param out
-	 *            argout type
-	 * @param out_comments
-	 *            argout description
-	 * @param level
-	 *            The command display type OPERATOR or EXPERT
-	 */
-	// ===============================================================
-	public GetTangoQualitiesClass(String name, int in, int out, String in_comments, String out_comments, DispLevel level) {
-		super(name, in, out, in_comments, out_comments, level);
-	}
+    // ===============================================================
+    /**
+     * Check if it is allowed to execute the command.
+     */
+    // ===============================================================
+    @Override
+    public boolean is_allowed(final DeviceImpl device, final Any data_in) {
+	// End of Generated Code
 
-	// ===============================================================
-	/**
-	 * return the result of the device's command.
-	 */
-	// ===============================================================
-	@Override
-	public Any execute(DeviceImpl device, Any in_any) throws DevFailed {
-		if (!(device instanceof AttributeComposer)) {
-			Except.throw_exception("DEVICE_ERROR", "Device parameter is not instance of AttributeComposer", "AttributeComposer");
-		}
-
-		Util.out2.println("GetTangoQualitiesClass.execute(): arrived");
-		return insert(((AttributeComposer) (device)).get_tango_qualities());
-	}
-
-	// ===============================================================
-	/**
-	 * Check if it is allowed to execute the command.
-	 */
-	// ===============================================================
-	@Override
-	public boolean is_allowed(DeviceImpl device, Any data_in) {
-		// End of Generated Code
-
-		// Re-Start of Generated Code
-		return true;
-	}
+	// Re-Start of Generated Code
+	return true;
+    }
 }
 // -----------------------------------------------------------------------------
 /*
