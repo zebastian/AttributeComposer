@@ -3,7 +3,7 @@
 	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
 
 		<layout class="ch.qos.logback.classic.PatternLayout">
-			<pattern>%-5level %d{HH:mm:ss.SSS} [%thread - %X{deviceName}] %logger{36}.%M:%L - %msg%n</pattern><
+			<pattern>%-5level %d{HH:mm:ss.SSS} [%thread - %X{deviceName}] %logger{36}.%M:%L - %msg%n</pattern>
 		</layout>
 	</appender>
 
