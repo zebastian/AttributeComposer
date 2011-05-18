@@ -571,8 +571,11 @@ public class AttributeComposer {
     @Command(name = "SetAllValues")
     public void setAllValues(final double argin) throws DevFailed {
 	xlogger.entry();
-	logger.debug("argin  {}", argin);
-	writeAttribute(argin);
+	logger.debug("writing {}", argin);
+	if (!Double.isNaN(argin)) {
+	    attributeGroup.insert(Double.toString(argin));
+	    attributeGroup.write();
+	}
 	xlogger.exit();
     }
 
@@ -626,12 +629,4 @@ public class AttributeComposer {
 	xlogger.exit();
     }
 
-    public void writeAttribute(final double argin) throws DevFailed {
-	xlogger.entry();
-	logger.debug("writing {}", argin);
-	if (!Double.isNaN(argin)) {
-	    attributeGroup.insert(Double.toString(argin));
-	}
-	xlogger.exit();
-    }
 }
