@@ -40,7 +40,7 @@ public class AttributeGroupTaskReader implements Runnable {
     }
 
     public Map<String, String> getErrorReportMap() {
-	return errorReportMap;
+	return new HashMap<String, String>(errorReportMap);
     }
 
     public DeviceState getState() {
@@ -111,6 +111,6 @@ public class AttributeGroupTaskReader implements Runnable {
     }
 
     public Map<String, Double> getAttributeValueMap() {
-	return attributeValueMap;
+	return new HashMap<String, Double>(attributeValueMap);
     }
 }

@@ -3,7 +3,6 @@ package fr.soleil.tango.server.attributecomposer;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.ResourceBundle;
@@ -97,13 +96,6 @@ public class AttributeComposer {
     private String[] attributeNameList;
 
     /**
-     * The table of the attribute name and their associated message result
-     * <attributeName, message report> the messages are generated during the
-     * connexion, read or write instruction
-     */
-    private final Map<String, String> errorReportMap = new HashMap<String, String>();
-
-    /**
      * The list of the attributes quality in priority number format. Call
      * GetAttributeNameForIndex to know which attributes corresponds to an index
      * of the spectrum. Call GetPriorityForQuality to know the values of tango
@@ -125,12 +117,6 @@ public class AttributeComposer {
      */
     @Attribute
     private String[] attributesResultReport;
-
-    /**
-     * The table of the attribute name and their associated read values
-     * <attributeName, values>
-     */
-    private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
 
     /**
      * Application of the logical gate LogicalBoolean gates on booleanSpectrum
@@ -273,7 +259,7 @@ public class AttributeComposer {
 
     public String[] getAttributesResultReport() {
 	xlogger.entry();
-	errorReportMap.putAll(valueReader.getErrorReportMap());
+	final Map<String, String> errorReportMap = valueReader.getErrorReportMap();
 	int index = 0;
 	if (!errorReportMap.isEmpty()) {
 	    attributesResultReport = new String[errorReportMap.size()];
@@ -290,11 +276,10 @@ public class AttributeComposer {
 
     public boolean[] getBooleanSpectrum() {
 	xlogger.entry();
-	attributeValueMap.putAll(valueReader.getAttributeValueMap());
 	booleanSpectrum = new boolean[attributeNameList.length];
 	Boolean a = null;
 	Boolean b = null;
-	for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
+	for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
 	    final String attrName = entry.getKey();
 	    final double value = entry.getValue();
 	    final int index = getIndexForAttribute(attrName);
@@ -348,11 +333,11 @@ public class AttributeComposer {
 	xlogger.exit();
     }
 
-    private int getIndexForAttribute(final String aAttributeName) {
+    private int getIndexForAttribute(final String attributeName) {
 	xlogger.entry();
 	int idx = -1;
 	for (int i = 0; i < attributeNameList.length; i++) {
-	    if (attributeNameList[i].trim().equalsIgnoreCase(aAttributeName)) {
+	    if (attributeNameList[i].trim().equalsIgnoreCase(attributeName)) {
 		idx = i;
 	    }
 	}
@@ -392,9 +377,8 @@ public class AttributeComposer {
 
     public double[] getSpectrumResult() {
 	xlogger.entry();
-	attributeValueMap.putAll(valueReader.getAttributeValueMap());
 	spectrumResult = new double[attributeNameList.length];
-	for (final Map.Entry<String, Double> entry : attributeValueMap.entrySet()) {
+	for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
 	    final String attrName = entry.getKey();
 	    final double value = entry.getValue();
 	    final int index = getIndexForAttribute(attrName);
@@ -584,14 +568,11 @@ public class AttributeComposer {
 	logger.debug("property {} ", property);
 	logger.debug("type {} ", type);
 	// Get each proxy
-	DeviceProxy devicePoxy;
-	String deviceName;
+	DeviceProxy deviceProxy;
 	AttributeInfo attributeInfo;
 	for (int i = 0; i < attributeNameList.length; i++) {
-	    devicePoxy = attributeGroup.getGroup().getDevice(attributeNameList[i]);
-	    deviceName = devicePoxy.get_name();
-	    attributeInfo = devicePoxy.get_attribute_info(attributeNameArray[i]);
-
+	    deviceProxy = attributeGroup.getGroup().getDevice(attributeNameList[i]);
+	    attributeInfo = deviceProxy.get_attribute_info(attributeNameArray[i]);
 	    switch (type) {
 	    case FORMAT:
 		attributeInfo.format = property;
@@ -615,16 +596,7 @@ public class AttributeComposer {
 		attributeInfo.label = property;
 		break;
 	    }
-
-	    try {
-		devicePoxy.set_attribute_info(new AttributeInfo[] { attributeInfo });
-		errorReportMap.put(deviceName + "/" + attributeNameArray[i], dateInsertformat.format(new Date())
-			+ " : Set " + type + " property to " + property + " : SUCCESS");
-	    } catch (final DevFailed e) {
-		errorReportMap.put(deviceName + "/" + attributeNameArray[i], dateInsertformat.format(new Date())
-			+ " : Set " + type + " property to " + property + " : FAILED");
-		throw e;
-	    }
+	    deviceProxy.set_attribute_info(new AttributeInfo[] { attributeInfo });
 	}
 	xlogger.exit();
     }
