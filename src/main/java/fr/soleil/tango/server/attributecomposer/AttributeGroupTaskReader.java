@@ -8,7 +8,7 @@ import java.util.Map;
 
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
-import org.tango.server.idl4.DeviceState;
+import org.tango.server.DeviceState;
 import org.tango.utils.DevFailedUtils;
 
 import fr.esrf.Tango.AttrDataFormat;
