@@ -16,7 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
-import org.tango.server.DeviceState;
+import org.tango.DeviceState;
 import org.tango.server.ServerManager;
 import org.tango.server.annotation.Attribute;
 import org.tango.server.annotation.Command;
