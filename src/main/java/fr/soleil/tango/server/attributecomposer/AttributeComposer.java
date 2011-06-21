@@ -394,11 +394,16 @@ public class AttributeComposer {
 	    if (!state.equals(newState)) {
 		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
 		state = newState;
-		status = valueReader.getStatus();
 	    }
-
 	}
 	return state;
+    }
+
+    public String getStatus() {
+	if (valueReader != null) {
+	    status = valueReader.getStatus();
+	}
+	return status;
     }
 
     /**
@@ -430,6 +435,7 @@ public class AttributeComposer {
 	} else {
 	    DevFailedUtils.throwDevFailed("INIT_ERROR", "No attribute defined in property");
 	}
+
 	xlogger.exit();
     }
 
