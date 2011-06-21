@@ -65,10 +65,10 @@ public class AttributeGroupTaskReader implements Runnable {
 		resultGroup = attributeGroup.read();
 	    } catch (final DevFailed devFailed) {
 		state = DeviceState.FAULT;
-		status = dateInsertformat.format(new Date()) + " : Unexpected Error, cannot read: \n"
+		status = dateInsertformat.format(new Date()) + " : Cannot read attribute group: \n"
 			+ DevFailedUtils.toString(devFailed);
+		return;
 	    }
-
 	    // extract results
 	    boolean tmpHasFailed = false;
 	    final Enumeration<?> enumeration = resultGroup.elements();
