@@ -460,7 +460,7 @@ public class AttributeComposer {
     }
 
     @Delete
-    public void deleteDevice() {
+    public void deleteDevice() throws DevFailed {
 	if (future != null) {
 	    future.cancel(true);
 	}
