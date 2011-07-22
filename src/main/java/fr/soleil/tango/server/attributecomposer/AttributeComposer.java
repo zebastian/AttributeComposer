@@ -12,6 +12,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.math.stat.StatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.ext.XLogger;
@@ -131,6 +133,18 @@ public class AttributeComposer {
      */
     @Attribute
     private boolean[] booleanSpectrum;
+
+    @Attribute
+    private double mean = 0;
+
+    @Attribute
+    private double std = 0;
+
+    @Attribute
+    private double max = 0;
+
+    @Attribute
+    private double min = 0;
 
     @DynamicManagement
     DynamicManager dynMngt;
@@ -605,6 +619,38 @@ public class AttributeComposer {
 	    deviceProxy.set_attribute_info(new AttributeInfo[] { attributeInfo });
 	}
 	xlogger.exit();
+    }
+
+    public double getMean() {
+	getSpectrumResult();
+	if (spectrumResult != null && !ArrayUtils.isEmpty(spectrumResult)) {
+	    mean = StatUtils.mean(spectrumResult);
+	}
+	return mean;
+    }
+
+    public double getStd() {
+	getSpectrumResult();
+	if (spectrumResult != null && !ArrayUtils.isEmpty(spectrumResult)) {
+	    std = Math.sqrt(StatUtils.variance(spectrumResult));
+	}
+	return std;
+    }
+
+    public double getMax() {
+	getSpectrumResult();
+	if (spectrumResult != null && !ArrayUtils.isEmpty(spectrumResult)) {
+	    max = StatUtils.max(spectrumResult);
+	}
+	return max;
+    }
+
+    public double getMin() {
+	getSpectrumResult();
+	if (spectrumResult != null && !ArrayUtils.isEmpty(spectrumResult)) {
+	    min = StatUtils.min(spectrumResult);
+	}
+	return min;
     }
 
 }
