@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -38,6 +39,8 @@ import fr.esrf.TangoApi.DeviceProxy;
 import fr.esrf.TangoApi.QualityUtilities;
 import fr.soleil.tango.attributecomposer.PriorityQualityManager;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
+import fr.soleil.tango.statecomposer.StateResolver;
+import fr.soleil.tango.util.TangoUtil;
 
 @Device
 public class AttributeComposer {
@@ -80,22 +83,51 @@ public class AttributeComposer {
     }
 
     /**
-     * The table of the attribute name and their associated proxy group
-     * <attributeName, Group>
-     */
-    TangoGroupAttribute attributeGroup;
-
-    /**
-     * The attribute names without device name
-     */
-    private String[] attributeNameArray;
-
-    /**
      * The list of attribute name used to composed the resum state and the
      * spectrum result.
      */
     @DeviceProperty
     private String[] attributeNameList;
+
+    /**
+     * The priority number of a quality (the greater is the most important is
+     * ex: 5 for ALARM) Call GetTangoQuality to know the list of the Tango
+     * Quality order.
+     */
+    @DeviceProperty
+    private String[] priorityList;
+
+    /**
+     * The time out for a device proxy
+     */
+    @DeviceProperty
+    private String[] individualTimeout;
+
+    /**
+     * define is the device will read the monitored attributes' device states
+     */
+    @DeviceProperty
+    private String[] isStateComposer;
+
+    private boolean isStateComposerVal = false;
+    /**
+     * The list of priorities for state composer
+     */
+    @DeviceProperty
+    private String[] statePriorities;
+
+    /**
+     * The internal period of the Reading Thread
+     */
+    @DeviceProperty
+    private String[] internalReadingPeriod;
+
+    private long internalReadingPeriodL;
+    /**
+     * The logical gates to apply on the list of attribute.
+     */
+    @DeviceProperty
+    private String[] logicalBoolean;
 
     /**
      * The list of the attributes quality in priority number format. Call
@@ -129,7 +161,14 @@ public class AttributeComposer {
     private boolean booleanResult;
 
     /**
-     * Spectrum of boolean value
+     * The last state event : STATE at DATE
+     */
+    @SuppressWarnings("unused")
+    @Attribute
+    private String lastStateEvent = "";
+
+    /**
+     * Spectrum of boolean values
      */
     @Attribute
     private boolean[] booleanSpectrum;
@@ -147,46 +186,23 @@ public class AttributeComposer {
     private double min = 0;
 
     @DynamicManagement
-    DynamicManager dynMngt;
+    private DynamicManager dynMngt;
 
     private ScheduledExecutorService executor;
-
-    ScheduledFuture<?> future;
+    /**
+     * The table of the attribute name and their associated proxy group
+     * <attributeName, Group>
+     */
+    private TangoGroupAttribute attributeGroup;
 
     /**
-     * The time out of the device proxy
+     * The attribute names without device name
      */
-    @SuppressWarnings("unused")
-    @DeviceProperty
-    private String[] individualTimeout;
+    private String[] attributeNameArray;
 
-    /**
-     * The internal period of the Reading Thread
-     */
-    @DeviceProperty
-    private String[] internalReadingPeriod;
+    private ScheduledFuture<?> future;
 
-    private long internalReadingPeriodL;
-
-    /**
-     * The last state event : STATE at DATE
-     */
-    @SuppressWarnings("unused")
-    @Attribute
-    private String lastStateEvent = "";
-    /**
-     * The logical gates to apply on the list of attribute.
-     */
-    @DeviceProperty
-    private String[] logicalBoolean;
-
-    /**
-     * The priority number of a quality (the greater is the most important is
-     * ex: 5 for ALARM) Call GetTangoQuality to know the list of the Tango
-     * Quality order.
-     */
-    @DeviceProperty
-    private String[] priorityList;
+    private StateResolver stateReader;
 
     PriorityQualityManager qualityManager;
     /**
@@ -403,7 +419,13 @@ public class AttributeComposer {
     }
 
     public DeviceState getState() {
-	if (valueReader != null) {
+	if (isStateComposerVal && stateReader != null && stateReader.isStarted()) {
+	    final DeviceState newState = DeviceState.getDeviceState(stateReader.getState());
+	    if (!state.equals(newState)) {
+		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
+		state = newState;
+	    }
+	} else if (valueReader != null) {
 	    final DeviceState newState = valueReader.getState();
 	    if (!state.equals(newState)) {
 		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
@@ -466,6 +488,40 @@ public class AttributeComposer {
 	if (internalReadingPeriodL < 0) {
 	    internalReadingPeriodL = 3000;
 	}
+
+	// configure state composition
+	if (isStateComposer.length > 0) {
+	    try {
+		isStateComposerVal = Boolean.parseBoolean(isStateComposer[0]);
+	    } catch (final NumberFormatException e) {
+	    }
+	}
+
+	if (isStateComposerVal) {
+	    logger.debug("doing state composition");
+	    stateReader = new StateResolver(internalReadingPeriodL, false);
+	    stateReader.configurePriorities(priorityList);
+	    // retrieve device name from attribute name
+	    final Set<String> deviceNameList = new HashSet<String>();
+	    for (final String element : attributeNameList) {
+		final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
+		deviceNameList.add(deviceName);
+	    }
+	    // timeout
+	    int timeout = 3000;
+	    if (individualTimeout.length > 0) {
+		try {
+		    final int temp = Integer.valueOf(individualTimeout[0]);
+		    if (temp > 0) {
+			timeout = temp;
+		    }
+		} catch (final NumberFormatException e) {
+		}
+	    }
+	    stateReader.setMonitoredDevices(timeout, deviceNameList.toArray(new String[deviceNameList.size()]));
+	    stateReader.start();
+	}
+
 	executor = Executors.newScheduledThreadPool(1);
 	valueReader = new AttributeGroupTaskReader(attributeGroup, qualityManager);
 	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL, TimeUnit.MILLISECONDS);
@@ -475,6 +531,9 @@ public class AttributeComposer {
 
     @Delete
     public void deleteDevice() throws DevFailed {
+	if (stateReader != null) {
+	    stateReader.stop();
+	}
 	if (future != null) {
 	    future.cancel(true);
 	}
