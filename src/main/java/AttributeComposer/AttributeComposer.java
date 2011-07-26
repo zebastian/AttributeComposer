@@ -12,9 +12,12 @@
 //
 // $Author: abeilleg $
 //
-// $Revision: 1.19 $
+// $Revision: 1.20 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.19  2011/05/03 14:25:52  abeilleg
+// use new java api
+//
 // Revision 1.18  2011/04/15 12:45:12  abeilleg
 // compile with dependencies changes
 //
@@ -775,9 +778,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 	if (Double.isNaN(argin)) {
 	    return;
 	}
-
-	attributeGroup.insert(new Double(argin).toString());
-	attributeGroup.write();
+	attributeGroup.write(argin);
     }
 
     private enum PropertyType {
