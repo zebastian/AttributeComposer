@@ -209,7 +209,7 @@ public class AttributeComposer {
      * Spectrum Result
      */
     @Attribute
-    private double[] spectrumResult;
+    private double[] spectrumResult = new double[] {};
     /**
      * The state of the device
      */
@@ -218,7 +218,6 @@ public class AttributeComposer {
     /**
      * The status of the device
      */
-    @SuppressWarnings("unused")
     @Status
     private String status = "";
 
@@ -407,12 +406,15 @@ public class AttributeComposer {
 
     public double[] getSpectrumResult() {
 	xlogger.entry();
-	spectrumResult = new double[attributeNameList.length];
-	for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
-	    final String attrName = entry.getKey();
-	    final double value = entry.getValue();
-	    final int index = getIndexForAttribute(attrName);
-	    spectrumResult[index] = value;
+
+	if (valueReader != null) {
+	    spectrumResult = new double[attributeNameList.length];
+	    for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
+		final String attrName = entry.getKey();
+		final double value = entry.getValue();
+		final int index = getIndexForAttribute(attrName);
+		spectrumResult[index] = value;
+	    }
 	}
 	xlogger.exit();
 	return spectrumResult;
@@ -635,10 +637,7 @@ public class AttributeComposer {
     public void setAllValues(final double argin) throws DevFailed {
 	xlogger.entry();
 	logger.debug("writing {}", argin);
-	if (!Double.isNaN(argin)) {
-	    attributeGroup.insert(Double.toString(argin));
-	    attributeGroup.write();
-	}
+	attributeGroup.write(argin);
 	xlogger.exit();
     }
 
