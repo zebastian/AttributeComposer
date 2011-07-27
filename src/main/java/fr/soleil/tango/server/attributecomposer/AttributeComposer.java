@@ -502,7 +502,7 @@ public class AttributeComposer {
 	if (isStateComposerVal) {
 	    logger.debug("doing state composition");
 	    stateReader = new StateResolver(internalReadingPeriodL, false);
-	    stateReader.configurePriorities(priorityList);
+	    stateReader.configurePriorities(statePriorities);
 	    // retrieve device name from attribute name
 	    final Set<String> deviceNameList = new HashSet<String>();
 	    for (final String element : attributeNameList) {
