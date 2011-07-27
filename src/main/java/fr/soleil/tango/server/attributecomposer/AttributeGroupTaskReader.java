@@ -17,8 +17,8 @@ import fr.esrf.TangoApi.DeviceAttribute;
 import fr.esrf.TangoApi.Group.GroupAttrReply;
 import fr.esrf.TangoApi.Group.GroupAttrReplyList;
 import fr.soleil.tango.attributecomposer.PriorityQualityManager;
+import fr.soleil.tango.clientapi.InsertExtractUtils;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
-import fr.soleil.tango.util.InsertExtractUtils;
 
 public class AttributeGroupTaskReader implements Runnable {
 
