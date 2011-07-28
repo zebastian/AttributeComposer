@@ -31,6 +31,7 @@ import org.tango.server.annotation.Init;
 import org.tango.server.annotation.State;
 import org.tango.server.annotation.Status;
 import org.tango.server.dynamic.DynamicManager;
+import org.tango.server.dynamic.command.GroupCommand;
 import org.tango.utils.DevFailedUtils;
 
 import fr.esrf.Tango.DevFailed;
@@ -128,6 +129,12 @@ public class AttributeComposer {
      */
     @DeviceProperty
     private String[] logicalBoolean;
+
+    /**
+     * The request grouped commands
+     */
+    @DeviceProperty
+    private String[] commandNameList;
 
     /**
      * The list of the attributes quality in priority number format. Call
@@ -433,7 +440,7 @@ public class AttributeComposer {
 		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
 		state = newState;
 	    }
-	}
+	} 
 	return state;
     }
 
@@ -527,6 +534,18 @@ public class AttributeComposer {
 	executor = Executors.newScheduledThreadPool(1);
 	valueReader = new AttributeGroupTaskReader(attributeGroup, qualityManager);
 	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL, TimeUnit.MILLISECONDS);
+
+	if (commandNameList.length > 0 && !commandNameList[0].trim().equals("")) {
+	    // use set to suppress duplicate elements
+	    final Set<String> cmdList = new HashSet<String>(Arrays.asList(commandNameList));
+	    for (final String element : cmdList) {
+		final String commandName = element.trim();
+		if (!commandName.isEmpty()) {
+		    final GroupCommand behavior = new GroupCommand(commandName, stateReader.getGroup());
+		    dynMngt.addCommand(behavior);
+		}
+	    }
+	}
 
 	xlogger.exit();
     }
