@@ -59,6 +59,10 @@
 			<artifactId>JTangoClientLang</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.tango</groupId>
+			<artifactId>JTangoServerLang</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>fr.soleil.lib</groupId>
 			<artifactId>dtu</artifactId>
 			<!--<exclusions>
