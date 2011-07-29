@@ -11,6 +11,7 @@ import org.slf4j.ext.XLoggerFactory;
 import org.tango.DeviceState;
 import org.tango.utils.DevFailedUtils;
 
+import fr.esrf.Tango.AttrDataFormat;
 import fr.esrf.Tango.AttrQuality;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.TangoApi.DeviceAttribute;
@@ -83,7 +84,8 @@ public class AttributeGroupTaskReader implements Runnable {
 		attrName = oneResult.obj_name();
 		try {
 		    deviceAttribute = oneResult.get_data();
-		    final double tmpReadValue = InsertExtractUtils.extractRead(deviceAttribute, double.class);
+		    final double tmpReadValue = InsertExtractUtils.extractRead(deviceAttribute, AttrDataFormat.SCALAR,
+			    double.class);
 		    quality = deviceAttribute.getQuality();
 		    attributeValueMap.put(deviceName + "/" + attrName, tmpReadValue);
 		    qualityManager.putAttributeQuality(deviceName + "/" + attrName, quality);
