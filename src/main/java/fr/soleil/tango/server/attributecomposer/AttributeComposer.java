@@ -1,9 +1,11 @@
 package fr.soleil.tango.server.attributecomposer;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
@@ -84,11 +86,13 @@ public class AttributeComposer {
     }
 
     /**
-     * The list of attribute name used to composed the resum state and the
-     * spectrum result.
+     * The list of attribute names to compose. The name may be may contain the
+     * wild char * for device name (ie. *VI*\/pressure)
      */
     @DeviceProperty
     private String[] attributeNameList;
+
+    private final List<String> fullAttributeNameList = new ArrayList<String>();
 
     /**
      * The priority number of a quality (the greater is the most important is
@@ -143,7 +147,7 @@ public class AttributeComposer {
      * qualities.
      */
     @Attribute
-    private short[] attributesNumberPriorityList;
+    private short[] attributesNumberPriorityList = new short[0];
 
     /**
      * The list of the attribute quality in string format. Call
@@ -151,13 +155,13 @@ public class AttributeComposer {
      * of the spectrum
      */
     @Attribute
-    private String[] attributesQualityList;
+    private String[] attributesQualityList = new String[0];
 
     /**
      * The result of the writing and reading instruction
      */
     @Attribute
-    private String[] attributesResultReport;
+    private String[] attributesResultReport = new String[0];
 
     /**
      * Application of the logical gate LogicalBoolean gates on booleanSpectrum
@@ -178,7 +182,7 @@ public class AttributeComposer {
      * Spectrum of boolean values
      */
     @Attribute
-    private boolean[] booleanSpectrum;
+    private boolean[] booleanSpectrum = new boolean[0];
 
     @Attribute
     private double mean = 0;
@@ -211,7 +215,7 @@ public class AttributeComposer {
 
     private StateResolver stateReader;
 
-    PriorityQualityManager qualityManager;
+    PriorityQualityManager qualityManager = new PriorityQualityManager();
     /**
      * Spectrum Result
      */
@@ -227,10 +231,6 @@ public class AttributeComposer {
      */
     @Status
     private String status = "";
-
-    @SuppressWarnings("unused")
-    @DeviceProperty
-    private String[] textTalkerDeviceProxy;
 
     private AttributeGroupTaskReader valueReader;
 
@@ -272,8 +272,8 @@ public class AttributeComposer {
 	xlogger.entry();
 	String argout = "Unknown Index";
 	logger.debug("argin {}", argin);
-	if (attributeNameList != null && argin > -1 && argin < attributeNameList.length) {
-	    argout = attributeNameList[argin];
+	if (!fullAttributeNameList.isEmpty()) {
+	    argout = fullAttributeNameList.get(argin);
 	}
 	xlogger.exit();
 	return argout;
@@ -295,16 +295,18 @@ public class AttributeComposer {
 
     public String[] getAttributesResultReport() {
 	xlogger.entry();
-	final Map<String, String> errorReportMap = valueReader.getErrorReportMap();
-	int index = 0;
-	if (!errorReportMap.isEmpty()) {
-	    attributesResultReport = new String[errorReportMap.size()];
-	    for (final Map.Entry<String, String> entry : errorReportMap.entrySet()) {
-		attributesResultReport[index++] = entry.getKey() + "->" + entry.getValue();
+	if (valueReader != null) {
+	    final Map<String, String> errorReportMap = valueReader.getErrorReportMap();
+	    int index = 0;
+	    if (!errorReportMap.isEmpty()) {
+		attributesResultReport = new String[errorReportMap.size()];
+		for (final Map.Entry<String, String> entry : errorReportMap.entrySet()) {
+		    attributesResultReport[index++] = entry.getKey() + "->" + entry.getValue();
+		}
+	    } else {
+		attributesResultReport = new String[1];
+		attributesResultReport[index] = "no value";
 	    }
-	} else {
-	    attributesResultReport = new String[1];
-	    attributesResultReport[index] = "no value";
 	}
 	xlogger.exit();
 	return attributesResultReport;
@@ -312,37 +314,38 @@ public class AttributeComposer {
 
     public boolean[] getBooleanSpectrum() {
 	xlogger.entry();
-	booleanSpectrum = new boolean[attributeNameList.length];
-	Boolean a = null;
-	Boolean b = null;
-	for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
-	    final String attrName = entry.getKey();
-	    final double value = entry.getValue();
-	    final int index = getIndexForAttribute(attrName);
-	    if (value == 1) {
-		booleanSpectrum[index] = true;
-		a = true;
-	    } else {
-		booleanSpectrum[index] = false;
-		b = false;
+	if (valueReader != null) {
+	    booleanSpectrum = new boolean[fullAttributeNameList.size()];
+	    Boolean a = null;
+	    Boolean b = null;
+	    for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
+		final String attrName = entry.getKey();
+		final double value = entry.getValue();
+		final int index = getIndexForAttribute(attrName);
+		if (value == 1) {
+		    booleanSpectrum[index] = true;
+		    a = true;
+		} else {
+		    booleanSpectrum[index] = false;
+		    b = false;
+		}
+	    }
+	    if (a == null) {
+		a = false;
+	    }
+	    if (b == null) {
+		b = true;
+	    }
+	    if (logicalBoolean[0].equalsIgnoreCase("NONE")) {
+		booleanResult = false;
+	    } else if (logicalBoolean[0].equalsIgnoreCase("XOR")) {
+		booleanResult = a ^ b;
+	    } else if (logicalBoolean[0].equalsIgnoreCase("OR")) {
+		booleanResult = a | b;
+	    } else if (logicalBoolean[0].equalsIgnoreCase("AND")) {
+		booleanResult = a & b;
 	    }
 	}
-	if (a == null) {
-	    a = false;
-	}
-	if (b == null) {
-	    b = true;
-	}
-	if (logicalBoolean[0].equalsIgnoreCase("NONE")) {
-	    booleanResult = false;
-	} else if (logicalBoolean[0].equalsIgnoreCase("XOR")) {
-	    booleanResult = a ^ b;
-	} else if (logicalBoolean[0].equalsIgnoreCase("OR")) {
-	    booleanResult = a | b;
-	} else if (logicalBoolean[0].equalsIgnoreCase("AND")) {
-	    booleanResult = a & b;
-	}
-
 	xlogger.exit();
 	return booleanSpectrum;
     }
@@ -372,8 +375,8 @@ public class AttributeComposer {
     private int getIndexForAttribute(final String attributeName) {
 	xlogger.entry();
 	int idx = -1;
-	for (int i = 0; i < attributeNameList.length; i++) {
-	    if (attributeNameList[i].trim().equalsIgnoreCase(attributeName)) {
+	for (int i = 0; i < fullAttributeNameList.size(); i++) {
+	    if (fullAttributeNameList.get(i).trim().equalsIgnoreCase(attributeName)) {
 		idx = i;
 	    }
 	}
@@ -415,7 +418,7 @@ public class AttributeComposer {
 	xlogger.entry();
 
 	if (valueReader != null) {
-	    spectrumResult = new double[attributeNameList.length];
+	    spectrumResult = new double[fullAttributeNameList.size()];
 	    for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
 		final String attrName = entry.getKey();
 		final double value = entry.getValue();
@@ -440,7 +443,7 @@ public class AttributeComposer {
 		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
 		state = newState;
 	    }
-	} 
+	}
 	return state;
     }
 
@@ -465,37 +468,73 @@ public class AttributeComposer {
     /**
      * Creation of the group of devices
      */
-    private void createTangoGroup() throws DevFailed {
-	xlogger.entry();
-	// If no property defined the devices is in STANDBY
-	if (attributeNameList.length > 0 || !attributeNameList[0].trim().isEmpty()) {
-	    // set to remove duplications
-	    final HashSet<String> set = new HashSet<String>(Arrays.asList(attributeNameList));
-	    attributeGroup = new TangoGroupAttribute("attribute composer", set.toArray(new String[set.size()]));
-	    attributeNameArray = new String[attributeNameList.length];
-	    int i = 0;
-	    for (final String attribute : attributeNameList) {
-		attributeNameArray[i++] = attribute.substring(attribute.lastIndexOf("/") + 1);
-	    }
-	} else {
-	    DevFailedUtils.throwDevFailed("INIT_ERROR", "No attribute defined in property");
-	}
-
-	xlogger.exit();
-    }
+    // private void createTangoGroup() throws DevFailed {
+    // xlogger.entry();
+    // // If no property defined the devices is in STANDBY
+    // if (attributeNameList.length > 0 ||
+    // !attributeNameList[0].trim().isEmpty()) {
+    // // set to remove duplications
+    // final HashSet<String> set = new
+    // HashSet<String>(Arrays.asList(attributeNameList));
+    // attributeGroup = new TangoGroupAttribute("attribute composer",
+    // set.toArray(new String[set.size()]));
+    // attributeNameArray = new String[attributeNameList.length];
+    // int i = 0;
+    // for (final String attribute : attributeNameList) {
+    // attributeNameArray[i++] = attribute.substring(attribute.lastIndexOf("/")
+    // + 1);
+    // }
+    // } else {
+    // DevFailedUtils.throwDevFailed("INIT_ERROR",
+    // "No attribute defined in property");
+    // }
+    //
+    // xlogger.exit();
+    // }
 
     @Init(lazyLoading = true)
     public void initDevice() throws DevFailed {
 	xlogger.entry();
 	version = versionStatic;
-	qualityManager = new PriorityQualityManager();
-	configureCustomPriorityList();
 
-	createTangoGroup();
-	// create a timer to read attributes
-	internalReadingPeriodL = Long.parseLong(internalReadingPeriod[0]);
-	if (internalReadingPeriodL < 0) {
-	    internalReadingPeriodL = 3000;
+	// configure the attribute group
+	if (attributeNameList.length > 0 || !attributeNameList[0].trim().isEmpty()) {
+	    // set to remove duplications
+	    final HashSet<String> set = new HashSet<String>(Arrays.asList(attributeNameList));
+	    // retrieve full name from pattern
+	    for (final String attributePattern : set) {
+		if (attributePattern.contains("*") && attributePattern.contains("/")) {
+		    final String devicePattern = attributePattern.substring(0, attributePattern.lastIndexOf('/'));
+		    final String attributeName = attributePattern.substring(attributePattern.lastIndexOf('/'));
+		    final List<String> deviceNames = Arrays.asList(TangoUtil.getDevicesForPattern(devicePattern));
+		    final List<String> attributesNames = new ArrayList<String>();
+		    for (final String deviceName : deviceNames) {
+			attributesNames.add(deviceName + attributeName);
+		    }
+		    fullAttributeNameList.addAll(attributesNames);
+		} else {
+		    fullAttributeNameList.add(attributePattern);
+		}
+	    }
+	    attributeGroup = new TangoGroupAttribute("attribute composer",
+		    fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
+	    attributeNameArray = new String[fullAttributeNameList.size()];
+	    int i = 0;
+	    for (final String attribute : fullAttributeNameList) {
+		attributeNameArray[i++] = TangoUtil.getAttributeName(attribute);
+	    }
+
+	    configureCustomPriorityList();
+	    // create a timer to read attributes
+	    internalReadingPeriodL = Long.parseLong(internalReadingPeriod[0]);
+	    if (internalReadingPeriodL < 0) {
+		internalReadingPeriodL = 3000;
+	    }
+	    executor = Executors.newScheduledThreadPool(1);
+	    valueReader = new AttributeGroupTaskReader(attributeGroup, qualityManager);
+	    future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL, TimeUnit.MILLISECONDS);
+	} else {
+	    DevFailedUtils.throwDevFailed("INIT_ERROR", "No attribute defined in property");
 	}
 
 	// configure state composition
@@ -512,7 +551,7 @@ public class AttributeComposer {
 	    stateReader.configurePriorities(statePriorities);
 	    // retrieve device name from attribute name
 	    final Set<String> deviceNameList = new HashSet<String>();
-	    for (final String element : attributeNameList) {
+	    for (final String element : fullAttributeNameList) {
 		final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
 		deviceNameList.add(deviceName);
 	    }
@@ -531,10 +570,7 @@ public class AttributeComposer {
 	    stateReader.start();
 	}
 
-	executor = Executors.newScheduledThreadPool(1);
-	valueReader = new AttributeGroupTaskReader(attributeGroup, qualityManager);
-	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL, TimeUnit.MILLISECONDS);
-
+	// creat dynamic group command
 	if (commandNameList.length > 0 && !commandNameList[0].trim().equals("")) {
 	    // use set to suppress duplicate elements
 	    final Set<String> cmdList = new HashSet<String>(Arrays.asList(commandNameList));
