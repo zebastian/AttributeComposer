@@ -12,7 +12,7 @@
 	<artifactId>AttributeComposer</artifactId>
 	<name>Attribute Composer</name>
 	<description>Attribute Composer Device Server</description>
-	<version>4.0.2</version>
+	<version>4.0.3-SNAPSHOT</version>
 	<scm>
 		<connection>${scm.connection.cvs.tango-ds}:Calculation/AttributeComposer</connection>
 		<developerConnection>${scm.developerConnection.cvs.tango-ds}:Calculation/AttributeComposer</developerConnection>
@@ -37,13 +37,37 @@
 					</mainClass>
 				</configuration>
 			</plugin>
+			<!-- <plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.2-beta-2</version>
+				<executions>
+					<execution>
+						<id>create-executable-jar</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<configuration>
+							<descriptors>
+								<descriptor>
+									src/main/assembly/assembly.xml</descriptor>
+							</descriptors>
+							<archive>
+								<manifest>
+									<mainClass>fr.soleil.tango.server.attributecomposer.AttributeComposer</mainClass>
+								</manifest>
+							</archive>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin> -->
 		</plugins>
 	</build>
 	<dependencies>
 		<dependency>
 			<groupId>fr.esrf.tango</groupId>
 			<artifactId>TangORB</artifactId>
-			<!--<exclusions>
+			<!--	<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
 					<artifactId>slf4j-log4j12</artifactId>
@@ -52,8 +76,8 @@
 					<groupId>log4j</groupId>
 					<artifactId>log4j</artifactId>
 				</exclusion>
-			</exclusions>
-		--></dependency>
+			</exclusions>-->
+		</dependency>
 		<dependency>
 			<groupId>org.tango</groupId>
 			<artifactId>JTangoClientLang</artifactId>
@@ -74,23 +98,14 @@
 					<groupId>log4j</groupId>
 					<artifactId>log4j</artifactId>
 				</exclusion>
-			</exclusions>
-		--></dependency>
+			</exclusions>-->
+		</dependency>
 
 		<dependency>
 			<groupId>org.tango</groupId>
 			<artifactId>JTangoServer</artifactId>
-			<!--<exclusions>
-				<exclusion>
-					<groupId>org.slf4j</groupId>
-					<artifactId>slf4j-log4j12</artifactId>
-				</exclusion>
-				<exclusion>
-					<groupId>log4j</groupId>
-					<artifactId>log4j</artifactId>
-				</exclusion>
-			</exclusions>
-		--></dependency>
+		</dependency>
+		
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-math</artifactId>
