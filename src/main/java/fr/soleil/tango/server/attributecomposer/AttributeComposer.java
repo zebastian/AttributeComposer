@@ -66,8 +66,6 @@ public class AttributeComposer {
 
     private static Logger logger = LoggerFactory.getLogger(AttributeComposer.class);
 
-    private static String versionStatic;
-
     private final static XLogger xlogger = XLoggerFactory.getXLogger(AttributeComposer.class);
 
     /**
@@ -75,7 +73,7 @@ public class AttributeComposer {
      */
     public static void main(final String[] args) {
 	final ResourceBundle rb = ResourceBundle.getBundle("fr.soleil.attributecomposer.application");
-	versionStatic = rb.getString("project.version");
+	version = rb.getString("project.version");
 	try {
 	    ServerManager.getInstance().addClass("AttributeComposer", AttributeComposer.class);
 	    ServerManager.getInstance().start(args, "AttributeComposer");
@@ -112,9 +110,8 @@ public class AttributeComposer {
      * define is the device will read the monitored attributes' device states
      */
     @DeviceProperty
-    private String[] isStateComposer;
+    private boolean isStateComposer;
 
-    private boolean isStateComposerVal = false;
     /**
      * The list of priorities for state composer
      */
@@ -125,9 +122,7 @@ public class AttributeComposer {
      * The internal period of the Reading Thread
      */
     @DeviceProperty
-    private String[] internalReadingPeriod;
-
-    private long internalReadingPeriodL;
+    private final long internalReadingPeriod = 3000;
     /**
      * The logical gates to apply on the list of attribute.
      */
@@ -235,9 +230,8 @@ public class AttributeComposer {
     /**
      * The number version of the device
      */
-    @SuppressWarnings("unused")
     @Attribute
-    private String version;
+    private static String version;
 
     /**
      * Initialize the device.
@@ -429,13 +423,15 @@ public class AttributeComposer {
     }
 
     public DeviceState getState() {
-	if (isStateComposerVal && stateReader != null && stateReader.isStarted()) {
+	if (stateReader != null) {
+	    System.out.println("stateReader");
 	    final DeviceState newState = DeviceState.getDeviceState(stateReader.getState());
 	    if (!state.equals(newState)) {
 		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
 		state = newState;
 	    }
 	} else if (valueReader != null) {
+	    System.out.println("valueReader");
 	    final DeviceState newState = valueReader.getState();
 	    if (!state.equals(newState)) {
 		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
@@ -493,7 +489,6 @@ public class AttributeComposer {
     @Init(lazyLoading = true)
     public void initDevice() throws DevFailed {
 	xlogger.entry();
-	version = versionStatic;
 
 	// configure the attribute group
 	if (attributeNameList.length > 0 || !attributeNameList[0].trim().isEmpty()) {
@@ -524,35 +519,27 @@ public class AttributeComposer {
 
 	    configureCustomPriorityList();
 	    // create a timer to read attributes
-	    internalReadingPeriodL = Long.parseLong(internalReadingPeriod[0]);
-	    if (internalReadingPeriodL < 0) {
-		internalReadingPeriodL = 3000;
-	    }
+
 	    executor = Executors.newScheduledThreadPool(1);
 	    valueReader = new AttributeGroupTaskReader(attributeGroup, qualityManager);
-	    future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriodL, TimeUnit.MILLISECONDS);
+	    future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriod, TimeUnit.MILLISECONDS);
 	} else {
 	    DevFailedUtils.throwDevFailed("INIT_ERROR", "No attribute defined in property");
 	}
 
-	// configure state composition
-	if (isStateComposer.length > 0) {
-	    try {
-		isStateComposerVal = Boolean.parseBoolean(isStateComposer[0]);
-	    } catch (final NumberFormatException e) {
-	    }
+	// retrieve device name from attribute name
+	final Set<String> deviceNameList = new HashSet<String>();
+	for (final String element : fullAttributeNameList) {
+	    final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
+	    deviceNameList.add(deviceName);
 	}
-
-	if (isStateComposerVal) {
+	logger.debug("doing state composition {}", isStateComposer);
+	// configure state composition
+	if (isStateComposer) {
 	    logger.debug("doing state composition");
-	    stateReader = new StateResolver(internalReadingPeriodL, false);
+	    stateReader = new StateResolver(internalReadingPeriod, false);
 	    stateReader.configurePriorities(statePriorities);
-	    // retrieve device name from attribute name
-	    final Set<String> deviceNameList = new HashSet<String>();
-	    for (final String element : fullAttributeNameList) {
-		final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
-		deviceNameList.add(deviceName);
-	    }
+
 	    // timeout
 	    int timeout = 3000;
 	    if (individualTimeout.length > 0) {
@@ -575,7 +562,8 @@ public class AttributeComposer {
 	    for (final String element : cmdList) {
 		final String commandName = element.trim();
 		if (!commandName.isEmpty()) {
-		    final GroupCommand behavior = new GroupCommand(commandName, stateReader.getGroup());
+		    final GroupCommand behavior = new GroupCommand(commandName,
+			    deviceNameList.toArray(new String[deviceNameList.size()]));
 		    dynMngt.addCommand(behavior);
 		}
 	    }
@@ -770,6 +758,18 @@ public class AttributeComposer {
 
     public String getLastStateEvent() {
 	return lastStateEvent;
+    }
+
+    public String getVersion() {
+	return version;
+    }
+
+    public void setState(final DeviceState state) {
+	this.state = state;
+    }
+
+    public void setStatus(final String status) {
+	this.status = status;
     }
 
 }
