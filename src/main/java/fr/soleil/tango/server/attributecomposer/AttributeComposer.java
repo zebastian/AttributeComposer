@@ -167,14 +167,12 @@ public class AttributeComposer {
      * Application of the logical gate LogicalBoolean gates on booleanSpectrum
      * attribute
      */
-    @SuppressWarnings("unused")
     @Attribute
     private boolean booleanResult;
 
     /**
      * The last state event : STATE at DATE
      */
-    @SuppressWarnings("unused")
     @Attribute
     private String lastStateEvent = "";
 
@@ -764,6 +762,14 @@ public class AttributeComposer {
 	    min = StatUtils.min(spectrumResult);
 	}
 	return min;
+    }
+
+    public boolean isBooleanResult() {
+	return booleanResult;
+    }
+
+    public String getLastStateEvent() {
+	return lastStateEvent;
     }
 
 }
