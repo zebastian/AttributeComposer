@@ -772,4 +772,8 @@ public class AttributeComposer {
 	this.status = status;
     }
 
+    public void setDynMngt(final DynamicManager dynMngt) {
+	this.dynMngt = dynMngt;
+    }
+
 }
