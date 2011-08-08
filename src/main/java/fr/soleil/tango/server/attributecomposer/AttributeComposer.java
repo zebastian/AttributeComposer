@@ -122,7 +122,7 @@ public class AttributeComposer {
      * The internal period of the Reading Thread
      */
     @DeviceProperty
-    private final long internalReadingPeriod = 3000;
+    private long internalReadingPeriod = 3000;
     /**
      * The logical gates to apply on the list of attribute.
      */
@@ -774,6 +774,38 @@ public class AttributeComposer {
 
     public void setDynMngt(final DynamicManager dynMngt) {
 	this.dynMngt = dynMngt;
+    }
+
+    public void setAttributeNameList(final String[] attributeNameList) {
+	this.attributeNameList = attributeNameList;
+    }
+
+    public void setIndividualTimeout(final String[] individualTimeout) {
+	this.individualTimeout = individualTimeout;
+    }
+
+    public void setCommandNameList(final String[] commandNameList) {
+	this.commandNameList = commandNameList;
+    }
+
+    public void setPriorityList(final String[] priorityList) {
+	this.priorityList = priorityList;
+    }
+
+    public void setStateComposer(final boolean isStateComposer) {
+	this.isStateComposer = isStateComposer;
+    }
+
+    public void setStatePriorities(final String[] statePriorities) {
+	this.statePriorities = statePriorities;
+    }
+
+    public void setInternalReadingPeriod(final long internalReadingPeriod) {
+	this.internalReadingPeriod = internalReadingPeriod;
+    }
+
+    public void setLogicalBoolean(final String[] logicalBoolean) {
+	this.logicalBoolean = logicalBoolean;
     }
 
 }
