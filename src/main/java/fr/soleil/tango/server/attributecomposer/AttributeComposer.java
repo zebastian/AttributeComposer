@@ -424,14 +424,12 @@ public class AttributeComposer {
 
     public DeviceState getState() {
 	if (stateReader != null) {
-	    System.out.println("stateReader");
 	    final DeviceState newState = DeviceState.getDeviceState(stateReader.getState());
 	    if (!state.equals(newState)) {
 		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
 		state = newState;
 	    }
 	} else if (valueReader != null) {
-	    System.out.println("valueReader");
 	    final DeviceState newState = valueReader.getState();
 	    if (!state.equals(newState)) {
 		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
