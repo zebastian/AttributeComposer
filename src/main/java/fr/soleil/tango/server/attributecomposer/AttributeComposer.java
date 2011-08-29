@@ -572,6 +572,7 @@ public class AttributeComposer {
 
     @Delete
     public void deleteDevice() throws DevFailed {
+	fullAttributeNameList.clear();
 	if (stateReader != null) {
 	    stateReader.stop();
 	}

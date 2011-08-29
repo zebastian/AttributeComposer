@@ -12,9 +12,12 @@
 //
 // $Author: abeilleg $
 //
-// $Revision: 1.20 $
+// $Revision: 1.21 $
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.20  2011/07/26 07:39:47  abeilleg
+// follow api changes
+//
 // Revision 1.19  2011/05/03 14:25:52  abeilleg
 // use new java api
 //
@@ -99,7 +102,6 @@ package AttributeComposer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -128,8 +130,6 @@ import fr.esrf.TangoApi.DeviceAttribute;
 import fr.esrf.TangoApi.DeviceProxy;
 import fr.esrf.TangoApi.QualityUtilities;
 import fr.esrf.TangoApi.StateUtilities;
-import fr.esrf.TangoApi.Group.GroupAttrReply;
-import fr.esrf.TangoApi.Group.GroupAttrReplyList;
 import fr.esrf.TangoDs.Attribute;
 import fr.esrf.TangoDs.DeviceClass;
 import fr.esrf.TangoDs.DeviceImpl;
@@ -943,7 +943,7 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 
 	public void valueReader() {
 
-	    GroupAttrReplyList resultGroup = null;
+	    DeviceAttribute[] resultGroup = null;
 	    // read attributes
 	    try {
 		resultGroup = attributeGroup.read();
@@ -959,32 +959,28 @@ public class AttributeComposer extends DeviceImpl implements TangoConst {
 
 	    // extract results
 	    boolean tmpHasFailed = false;
-	    final Enumeration<?> enumeration2 = resultGroup.elements();
-	    DeviceAttribute tmpDeviceAttribute = null;
-	    while (enumeration2.hasMoreElements()) {
-		final GroupAttrReply tmpOneResult = (GroupAttrReply) enumeration2.nextElement();
-		String tmpDeviceName = "";
-		tmpDeviceName = tmpOneResult.dev_name();
-		final String attrName = tmpOneResult.obj_name();
+	    final String[] attributeNames = attributeGroup.getGroup().getAttributeNames();
+	    int i = 0;
+	    for (final DeviceAttribute da : resultGroup) {
+		final String attributeName = attributeNames[i++];
 		AttrQuality tmpQuality = AttrQuality.ATTR_INVALID;
 		try {
-		    tmpDeviceAttribute = tmpOneResult.get_data();
 		    double tmpReadValue = Double.NaN;
-		    tmpReadValue = AttributeHelper.extractToDouble(tmpDeviceAttribute);
-		    tmpQuality = tmpDeviceAttribute.getQuality();
-		    attributeValueMap.put(tmpDeviceName + "/" + attrName, tmpReadValue);
-		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName, tmpQuality);
+		    tmpReadValue = AttributeHelper.extractToDouble(da);
+		    tmpQuality = da.getQuality();
+		    attributeValueMap.put(attributeName, tmpReadValue);
+		    attrQualityManager.putAttributeQuality(attributeName, tmpQuality);
 		} catch (final DevFailed devFailed) {
 		    tmpHasFailed = true;
-		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName, tmpQuality);
-		    attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat.format(new Date())
-			    + " : " + DevFailedUtils.toString(devFailed));
+		    attrQualityManager.putAttributeQuality(attributeName, tmpQuality);
+		    attributeResultReportMap.put(attributeName, m_insertformat.format(new Date()) + " : "
+			    + DevFailedUtils.toString(devFailed));
 		    devFailed.printStackTrace();
 		} catch (final Exception exception) {
 		    tmpHasFailed = true;
-		    attrQualityManager.putAttributeQuality(tmpDeviceName + "/" + attrName, tmpQuality);
-		    attributeResultReportMap.put(tmpDeviceName + "/" + attrName, m_insertformat.format(new Date())
-			    + " : " + Except.str_exception(exception));
+		    attrQualityManager.putAttributeQuality(attributeName, tmpQuality);
+		    attributeResultReportMap.put(attributeName,
+			    m_insertformat.format(new Date()) + " : " + Except.str_exception(exception));
 		    exception.printStackTrace();
 		}
 	    }
