@@ -5,6 +5,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 import org.tango.DeviceState;
@@ -22,6 +24,7 @@ public class AttributeGroupTaskReader implements Runnable {
 
     private static final SimpleDateFormat dateInsertformat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
     private final static XLogger xlogger = XLoggerFactory.getXLogger(AttributeGroupTaskReader.class);
+    private final static Logger logger = LoggerFactory.getLogger(AttributeGroupTaskReader.class);
     private final TangoGroupAttribute attributeGroup;
     private final Map<String, String> errorReportMap = new HashMap<String, String>();
     private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
@@ -63,6 +66,8 @@ public class AttributeGroupTaskReader implements Runnable {
 	    try {
 		resultGroup = attributeGroup.read();
 	    } catch (final DevFailed devFailed) {
+		logger.error("error extract group", devFailed);
+		logger.error(DevFailedUtils.toString(devFailed));
 		state = DeviceState.FAULT;
 		status = dateInsertformat.format(new Date()) + " : Cannot read attribute group: \n"
 			+ DevFailedUtils.toString(devFailed);
@@ -79,6 +84,8 @@ public class AttributeGroupTaskReader implements Runnable {
 		    attributeValueMap.put(attrName, tmpReadValue);
 		    qualityManager.putAttributeQuality(attrName, deviceAttribute.getQuality());
 		} catch (final DevFailed devFailed) {
+		    logger.error("error extract group", devFailed);
+		    logger.error(DevFailedUtils.toString(devFailed));
 		    tmpHasFailed = true;
 		    qualityManager.putAttributeQuality(attrName, AttrQuality.ATTR_INVALID);
 		    errorReportMap.put(attrName,
