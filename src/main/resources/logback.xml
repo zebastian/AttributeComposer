@@ -8,10 +8,10 @@
 	</appender>
 
 	<logger name="jacorb" level="ERROR" />
-	<logger name="org.tango" level="INFO" />
-	<logger name="fr.soleil.tango.server" level="TRACE" />
+	<logger name="org.tango" level="ERROR" />
+	<logger name="fr.soleil.tango.server" level="DEBUG" />
 
-	<root level="INFO">
+	<root level="DEBUG">
 		<appender-ref ref="CONSOLE" />
 	</root>
 </configuration>
