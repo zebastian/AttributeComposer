@@ -77,13 +77,9 @@ public final class AttributeComposer {
     public static void main(final String[] args) {
 	final ResourceBundle rb = ResourceBundle.getBundle("fr.soleil.attributecomposer.application");
 	version = rb.getString("project.version");
-	try {
-	    ServerManager.getInstance().addClass("AttributeComposer", AttributeComposer.class);
-	    ServerManager.getInstance().start(args, "AttributeComposer");
-	} catch (final DevFailed e) {
-	    DevFailedUtils.printDevFailed(e);
-	    LOGGER.debug(DevFailedUtils.toString(e));
-	}
+	ServerManager.getInstance().addClass("AttributeComposer", AttributeComposer.class);
+	ServerManager.getInstance().start(args, "AttributeComposer");
+
     }
 
     /**
