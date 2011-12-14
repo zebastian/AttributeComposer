@@ -65,7 +65,7 @@ public final class AttributeComposer {
     /**
      * SimpleDateFormat to timeStamp the error messages
      */
-    private static final SimpleDateFormat dateInsertformat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AttributeComposer.class);
 
@@ -408,13 +408,13 @@ public final class AttributeComposer {
 	if (stateReader != null) {
 	    final DeviceState newState = DeviceState.getDeviceState(stateReader.getState());
 	    if (!state.equals(newState)) {
-		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
+		lastStateEvent = newState.toString() + " at " + DATE_FORMAT.format(new Date());
 		state = newState;
 	    }
 	} else if (valueReader != null) {
 	    final DeviceState newState = valueReader.getState();
 	    if (!state.equals(newState)) {
-		lastStateEvent = newState.toString() + " at " + dateInsertformat.format(new Date());
+		lastStateEvent = newState.toString() + " at " + DATE_FORMAT.format(new Date());
 		state = newState;
 	    }
 	}
