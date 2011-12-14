@@ -20,11 +20,11 @@ import fr.soleil.tango.attributecomposer.PriorityQualityManager;
 import fr.soleil.tango.clientapi.InsertExtractUtils;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
 
-public class AttributeGroupTaskReader implements Runnable {
+public final class AttributeGroupTaskReader implements Runnable {
 
-    private static final SimpleDateFormat dateInsertformat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
-    private final static XLogger xlogger = XLoggerFactory.getXLogger(AttributeGroupTaskReader.class);
-    private final static Logger logger = LoggerFactory.getLogger(AttributeGroupTaskReader.class);
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+    private static final XLogger XLOGGER = XLoggerFactory.getXLogger(AttributeGroupTaskReader.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AttributeGroupTaskReader.class);
     private final TangoGroupAttribute attributeGroup;
     private final Map<String, String> errorReportMap = new HashMap<String, String>();
     private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
@@ -59,17 +59,17 @@ public class AttributeGroupTaskReader implements Runnable {
     }
 
     public void valueReader() {
-	xlogger.entry();
+	XLOGGER.entry();
 	try {
 	    DeviceAttribute[] resultGroup = null;
 	    // read attributes
 	    try {
 		resultGroup = attributeGroup.read();
 	    } catch (final DevFailed devFailed) {
-		logger.error("error extract group", devFailed);
-		logger.error(DevFailedUtils.toString(devFailed));
+		LOGGER.error("error extract group", devFailed);
+		LOGGER.error(DevFailedUtils.toString(devFailed));
 		state = DeviceState.FAULT;
-		status = dateInsertformat.format(new Date()) + " : Cannot read attribute group: \n"
+		status = DATE_FORMAT.format(new Date()) + " : Cannot read attribute group: \n"
 			+ DevFailedUtils.toString(devFailed);
 		return;
 	    }
@@ -84,26 +84,26 @@ public class AttributeGroupTaskReader implements Runnable {
 		    attributeValueMap.put(attrName, tmpReadValue);
 		    qualityManager.putAttributeQuality(attrName, deviceAttribute.getQuality());
 		} catch (final DevFailed devFailed) {
-		    logger.error("error extract group", devFailed);
-		    logger.error(DevFailedUtils.toString(devFailed));
+		    LOGGER.error("error extract group", devFailed);
+		    LOGGER.error(DevFailedUtils.toString(devFailed));
 		    tmpHasFailed = true;
 		    qualityManager.putAttributeQuality(attrName, AttrQuality.ATTR_INVALID);
 		    errorReportMap.put(attrName,
-			    dateInsertformat.format(new Date()) + " : " + DevFailedUtils.toString(devFailed));
+			    DATE_FORMAT.format(new Date()) + " : " + DevFailedUtils.toString(devFailed));
 		}
 	    }
 	    if (tmpHasFailed) {
 		state = DeviceState.FAULT;
-		status = dateInsertformat.format(new Date()) + " : Error see attributesResultReport";
+		status = DATE_FORMAT.format(new Date()) + " : Error see attributesResultReport";
 	    } else {
 		state = DeviceState.getDeviceState(qualityManager.getHighestPriorityState());
 		status = "At least one attribute is of quality " + qualityManager.getHighestPriorityQualityAsString();
 	    }
 	} catch (final Exception e) {
 	    state = DeviceState.FAULT;
-	    status = dateInsertformat.format(new Date()) + " Unexpected error " + e.getClass().getCanonicalName();
+	    status = DATE_FORMAT.format(new Date()) + " Unexpected error " + e.getClass().getCanonicalName();
 	}
-	xlogger.exit();
+	XLOGGER.exit();
     }
 
     public Map<String, Double> getAttributeValueMap() {

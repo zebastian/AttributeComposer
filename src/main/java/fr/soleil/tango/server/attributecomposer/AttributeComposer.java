@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
@@ -47,6 +48,8 @@ import fr.soleil.tango.util.TangoUtil;
 
 @Device
 public final class AttributeComposer {
+
+    private static final int REFRESH_PERIOD = 3000;
 
     /*
      * The supported logical gates
@@ -121,7 +124,7 @@ public final class AttributeComposer {
      * The internal period of the Reading Thread
      */
     @DeviceProperty
-    private long internalReadingPeriod = 3000;
+    private long internalReadingPeriod = REFRESH_PERIOD;
     /**
      * The logical gates to apply on the list of attribute.
      */
@@ -334,7 +337,7 @@ public final class AttributeComposer {
 	    final StringTokenizer token = new StringTokenizer(element.trim(), ",");
 	    if (token.countTokens() == 2) {
 		// To avoid the pb of case
-		final String tmpQualityName = token.nextToken().trim().toUpperCase();
+		final String tmpQualityName = token.nextToken().trim().toUpperCase(Locale.getDefault());
 		// If the custom state exist
 		if (QualityUtilities.isQualityExist(tmpQualityName)) {
 		    final int tmpPriority = Integer.valueOf(token.nextToken().trim());
@@ -398,7 +401,7 @@ public final class AttributeComposer {
 	    }
 	}
 	XLOGGER.exit();
-	return spectrumResult;
+	return Arrays.copyOf(spectrumResult, spectrumResult.length);
     }
 
     public DeviceState getState() {
