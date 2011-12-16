@@ -490,7 +490,7 @@ public final class AttributeComposer {
 		fullAttributeNameList.add(attributePattern);
 	    }
 	}
-	attributeGroup = new TangoGroupAttribute("attribute composer",
+	attributeGroup = new TangoGroupAttribute(
 		fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
 	attributeNameArray = new String[fullAttributeNameList.size()];
 	int i = 0;
