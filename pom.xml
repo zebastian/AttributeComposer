@@ -44,19 +44,11 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.tango</groupId>
-			<artifactId>TangORB</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.tango</groupId>
 			<artifactId>JTangoClientLang</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.tango</groupId>
 			<artifactId>JTangoServerLang</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>fr.soleil.lib</groupId>
-			<artifactId>dtu</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.tango</groupId>
