@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -34,17 +36,19 @@ import org.tango.server.annotation.Init;
 import org.tango.server.annotation.State;
 import org.tango.server.annotation.Status;
 import org.tango.server.dynamic.DynamicManager;
+import org.tango.server.dynamic.attribute.GroupAttribute;
 import org.tango.server.dynamic.command.GroupCommand;
 import org.tango.utils.DevFailedUtils;
+import org.tango.utils.TangoUtil;
 
 import fr.esrf.Tango.DevFailed;
+import fr.esrf.Tango.DispLevel;
 import fr.esrf.TangoApi.AttributeInfo;
 import fr.esrf.TangoApi.DeviceProxy;
 import fr.esrf.TangoApi.QualityUtilities;
 import fr.soleil.tango.attributecomposer.PriorityQualityManager;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
 import fr.soleil.tango.statecomposer.StateResolver;
-import fr.soleil.tango.util.TangoUtil;
 
 @Device
 public final class AttributeComposer {
@@ -88,7 +92,7 @@ public final class AttributeComposer {
     @DeviceProperty
     private String[] attributeNameList;
 
-    private final List<String> fullAttributeNameList = new ArrayList<String>();
+    private final List<String> fullAttributeNameList = new LinkedList<String>();
 
     /**
      * The priority number of a quality (the greater is the most important is ex: 5 for ALARM) Call GetTangoQuality to
@@ -144,8 +148,8 @@ public final class AttributeComposer {
     @Attribute
     private String lastStateEvent = "";
 
-    @Attribute
-    private double mean = 0;
+    // @Attribute
+    // private double mean = 0;
 
     @Attribute
     private double std = 0;
@@ -196,7 +200,7 @@ public final class AttributeComposer {
     /**
      * The number version of the device
      */
-    @Attribute
+    @Attribute(displayLevel = DispLevel._EXPERT)
     private static String version;
 
     /**
@@ -439,11 +443,16 @@ public final class AttributeComposer {
 
 	createAttributeGroup();
 
+	// add attribute for group to write on it
+	final GroupAttribute attribute = new GroupAttribute("mean", false,
+		fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
+	dynMngt.addAttribute(attribute);
+
 	configureCustomPriorityList();
 	// create a timer to read attributes
 
 	executor = Executors.newScheduledThreadPool(1);
-	valueReader = new AttributeGroupTaskReader(attributeGroup, qualityManager);
+	valueReader = new AttributeGroupTaskReader(attributeGroup, attribute, qualityManager);
 	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriod, TimeUnit.MILLISECONDS);
 
 	// retrieve device name from attribute name
@@ -474,7 +483,7 @@ public final class AttributeComposer {
 	// configure the attribute group
 
 	// set to remove duplications
-	final HashSet<String> set = new HashSet<String>(Arrays.asList(attributeNameList));
+	final Set<String> set = new LinkedHashSet<String>(Arrays.asList(attributeNameList));
 	// retrieve full name from pattern
 	for (final String attributePattern : set) {
 	    if (attributePattern.contains("*") && attributePattern.contains("/")) {
@@ -490,13 +499,15 @@ public final class AttributeComposer {
 		fullAttributeNameList.add(attributePattern);
 	    }
 	}
-	attributeGroup = new TangoGroupAttribute(
-		fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
+
+	attributeGroup = new TangoGroupAttribute(false, fullAttributeNameList.toArray(new String[fullAttributeNameList
+		.size()]));
 	attributeNameArray = new String[fullAttributeNameList.size()];
 	int i = 0;
 	for (final String attribute : fullAttributeNameList) {
 	    attributeNameArray[i++] = TangoUtil.getAttributeName(attribute);
 	}
+
     }
 
     private void createDynamicCommands(final Set<String> deviceNameList) throws DevFailed {
@@ -649,13 +660,13 @@ public final class AttributeComposer {
 	XLOGGER.exit();
     }
 
-    public double getMean() {
-	getSpectrumResult();
-	if (!ArrayUtils.isEmpty(spectrumResult)) {
-	    mean = StatUtils.mean(spectrumResult);
-	}
-	return mean;
-    }
+    // public double getMean() {
+    // getSpectrumResult();
+    // if (!ArrayUtils.isEmpty(spectrumResult)) {
+    // mean = StatUtils.mean(spectrumResult);
+    // }
+    // return mean;
+    // }
 
     public double getStd() {
 	getSpectrumResult();

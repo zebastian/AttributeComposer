@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 import org.tango.DeviceState;
+import org.tango.server.dynamic.attribute.GroupAttribute;
 import org.tango.utils.DevFailedUtils;
 
 import fr.esrf.Tango.AttrDataFormat;
@@ -30,14 +31,16 @@ public final class AttributeGroupTaskReader implements Runnable {
     private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
     private final PriorityQualityManager qualityManager;
     private final String[] attributeNames;
+    private final GroupAttribute attributeToUpdate;
 
     private DeviceState state = DeviceState.UNKNOWN;
     private String status = "";
 
-    public AttributeGroupTaskReader(final TangoGroupAttribute attributeGroup,
+    public AttributeGroupTaskReader(final TangoGroupAttribute attributeGroup, final GroupAttribute attributeToUpdate,
 	    final PriorityQualityManager qualityManager) {
 	this.attributeGroup = attributeGroup;
 	this.qualityManager = qualityManager;
+	this.attributeToUpdate = attributeToUpdate;
 	attributeNames = attributeGroup.getGroup().getAttributeNames();
     }
 
@@ -65,6 +68,7 @@ public final class AttributeGroupTaskReader implements Runnable {
 	    // read attributes
 	    try {
 		resultGroup = attributeGroup.read();
+		attributeToUpdate.setReadValue(resultGroup);
 	    } catch (final DevFailed devFailed) {
 		LOGGER.error("error extract group", devFailed);
 		LOGGER.error(DevFailedUtils.toString(devFailed));
