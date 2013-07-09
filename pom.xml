@@ -8,7 +8,7 @@
 	</parent>
 	<groupId>fr.soleil.deviceservers</groupId>
 	<artifactId>AttributeComposer</artifactId>
-	<version>4.0.7</version>
+	<version>4.0.8-SNAPSHOT</version>
 	<name>Attribute Composer</name>
 	<description>Attribute Composer Device Server</description>
 	<scm>
@@ -30,7 +30,7 @@
 		</developer>
 		<developer>
 			<id>abeille</id>
-			<name>Gwenaëlle Abeillé</name>
+			<name>Gwenaï¿½lle Abeillï¿½</name>
 			<email>gwenaelle.abeille@synchrotron-soleil.fr</email>
 			<organization>Synchrotron Soleil</organization>
 			<organizationUrl>http://www.synchrotron-soleil.fr</organizationUrl>
