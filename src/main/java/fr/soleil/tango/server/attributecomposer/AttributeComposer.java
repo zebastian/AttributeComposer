@@ -59,11 +59,11 @@ public final class AttributeComposer {
      * The supported logical gates
      */
     private enum LogicalGateType {
-	AND, NONE, OR, XOR
+        AND, NONE, OR, XOR
     }
 
     private enum PropertyType {
-	ALARM_MAX, ALARM_MIN, FORMAT, LABEL, MAX_VAL, MIN_VAL, UNIT;
+        ALARM_MAX, ALARM_MIN, FORMAT, LABEL, MAX_VAL, MIN_VAL, UNIT;
     }
 
     /**
@@ -79,9 +79,9 @@ public final class AttributeComposer {
      * MAIN
      */
     public static void main(final String[] args) {
-	final ResourceBundle rb = ResourceBundle.getBundle("fr.soleil.attributecomposer.application");
-	version = rb.getString("project.version");
-	ServerManager.getInstance().start(args, AttributeComposer.class);
+        final ResourceBundle rb = ResourceBundle.getBundle("fr.soleil.attributecomposer.application");
+        version = rb.getString("project.version");
+        ServerManager.getInstance().start(args, AttributeComposer.class);
 
     }
 
@@ -195,7 +195,7 @@ public final class AttributeComposer {
     @Status
     private String status = "";
 
-    private AttributeGroupTaskReader valueReader;
+    private AttributeComposerReader valueReader;
 
     /**
      * The number version of the device
@@ -212,7 +212,7 @@ public final class AttributeComposer {
      */
     @Command(name = "ActivateAll")
     public void activateAll() throws DevFailed {
-	setAllValues(1);
+        setAllValues(1);
     }
 
     /**
@@ -220,7 +220,7 @@ public final class AttributeComposer {
      */
     @Command(name = "DeactivateAll")
     public void deactivateAll() throws DevFailed {
-	setAllValues(0);
+        setAllValues(0);
     }
 
     /**
@@ -228,14 +228,14 @@ public final class AttributeComposer {
      */
     @Command(name = "GetAttributeNameForIndex")
     public String getAttributeNameForIndex(final short argin) throws DevFailed {
-	XLOGGER.entry();
-	String argout = "Unknown Index";
-	LOGGER.debug("argin {}", argin);
-	if (!fullAttributeNameList.isEmpty()) {
-	    argout = fullAttributeNameList.get(argin);
-	}
-	XLOGGER.exit();
-	return argout;
+        XLOGGER.entry();
+        String argout = "Unknown Index";
+        LOGGER.debug("argin {}", argin);
+        if (!fullAttributeNameList.isEmpty()) {
+            argout = fullAttributeNameList.get(argin);
+        }
+        XLOGGER.exit();
+        return argout;
     }
 
     /**
@@ -245,10 +245,10 @@ public final class AttributeComposer {
      */
     @Attribute
     public short[] getAttributesNumberPriorityList() {
-	XLOGGER.entry();
-	final short[] attributesNumberPriorityList = qualityManager.getQualityNumberArray();
-	XLOGGER.exit();
-	return attributesNumberPriorityList;
+        XLOGGER.entry();
+        final short[] attributesNumberPriorityList = qualityManager.getQualityNumberArray();
+        XLOGGER.exit();
+        return attributesNumberPriorityList;
     }
 
     /**
@@ -257,10 +257,10 @@ public final class AttributeComposer {
      */
     @Attribute
     public String[] getAttributesQualityList() {
-	XLOGGER.entry();
-	final String[] attributesQualityList = qualityManager.getQualityArray();
-	XLOGGER.exit();
-	return attributesQualityList;
+        XLOGGER.entry();
+        final String[] attributesQualityList = qualityManager.getQualityArray();
+        XLOGGER.exit();
+        return attributesQualityList;
     }
 
     /**
@@ -268,22 +268,22 @@ public final class AttributeComposer {
      */
     @Attribute
     public String[] getAttributesResultReport() {
-	XLOGGER.entry();
-	String[] attributesResultReport = null;
-	if (valueReader != null) {
-	    final Map<String, String> errorReportMap = valueReader.getErrorReportMap();
-	    int index = 0;
-	    if (!errorReportMap.isEmpty()) {
-		attributesResultReport = new String[errorReportMap.size()];
-		for (final Map.Entry<String, String> entry : errorReportMap.entrySet()) {
-		    attributesResultReport[index++] = entry.getKey() + "->" + entry.getValue();
-		}
-	    } else {
-		attributesResultReport = new String[] { "no value" };
-	    }
-	}
-	XLOGGER.exit();
-	return attributesResultReport;
+        XLOGGER.entry();
+        String[] attributesResultReport = null;
+        if (valueReader != null) {
+            final Map<String, String> errorReportMap = valueReader.getErrorReportMap();
+            int index = 0;
+            if (!errorReportMap.isEmpty()) {
+                attributesResultReport = new String[errorReportMap.size()];
+                for (final Map.Entry<String, String> entry : errorReportMap.entrySet()) {
+                    attributesResultReport[index++] = entry.getKey() + "->" + entry.getValue();
+                }
+            } else {
+                attributesResultReport = new String[] { "no value" };
+            }
+        }
+        XLOGGER.exit();
+        return attributesResultReport;
     }
 
     /**
@@ -291,72 +291,72 @@ public final class AttributeComposer {
      */
     @Attribute
     public boolean[] getBooleanSpectrum() {
-	XLOGGER.entry();
-	final boolean[] booleanSpectrum;
-	if (valueReader != null) {
-	    booleanSpectrum = new boolean[fullAttributeNameList.size()];
-	    boolean a = false;
-	    boolean b = true;
-	    for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
-		final String attrName = entry.getKey();
-		final double value = entry.getValue();
-		final int index = getIndexForAttribute(attrName);
-		if (value == 1) {
-		    booleanSpectrum[index] = true;
-		    a = true;
-		} else {
-		    booleanSpectrum[index] = false;
-		    b = false;
-		}
-	    }
-	    if (logicalBoolean.equalsIgnoreCase("NONE")) {
-		booleanResult = false;
-	    } else if (logicalBoolean.equalsIgnoreCase("XOR")) {
-		booleanResult = a ^ b;
-	    } else if (logicalBoolean.equalsIgnoreCase("OR")) {
-		booleanResult = a | b;
-	    } else if (logicalBoolean.equalsIgnoreCase("AND")) {
-		booleanResult = a & b;
-	    }
-	} else {
-	    booleanSpectrum = new boolean[0];
-	}
-	XLOGGER.exit();
-	return booleanSpectrum;
+        XLOGGER.entry();
+        final boolean[] booleanSpectrum;
+        if (valueReader != null) {
+            booleanSpectrum = new boolean[fullAttributeNameList.size()];
+            boolean a = false;
+            boolean b = true;
+            for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
+                final String attrName = entry.getKey();
+                final double value = entry.getValue();
+                final int index = getIndexForAttribute(attrName);
+                if (value == 1) {
+                    booleanSpectrum[index] = true;
+                    a = true;
+                } else {
+                    booleanSpectrum[index] = false;
+                    b = false;
+                }
+            }
+            if (logicalBoolean.equalsIgnoreCase("NONE")) {
+                booleanResult = false;
+            } else if (logicalBoolean.equalsIgnoreCase("XOR")) {
+                booleanResult = a ^ b;
+            } else if (logicalBoolean.equalsIgnoreCase("OR")) {
+                booleanResult = a | b;
+            } else if (logicalBoolean.equalsIgnoreCase("AND")) {
+                booleanResult = a & b;
+            }
+        } else {
+            booleanSpectrum = new boolean[0];
+        }
+        XLOGGER.exit();
+        return booleanSpectrum;
     }
 
     /**
      * Get the custom priority list
      */
     private void configureCustomPriorityList() {
-	XLOGGER.entry();
-	// Get the custom priority
-	for (final String element : priorityList) {
-	    // So count the token separated by ","
-	    final StringTokenizer token = new StringTokenizer(element.trim(), ",");
-	    if (token.countTokens() == 2) {
-		// To avoid the pb of case
-		final String tmpQualityName = token.nextToken().trim().toUpperCase(Locale.getDefault());
-		// If the custom state exist
-		if (QualityUtilities.isQualityExist(tmpQualityName)) {
-		    final int tmpPriority = Integer.valueOf(token.nextToken().trim());
-		    qualityManager.putQualityPriority(QualityUtilities.getQualityForName(tmpQualityName), tmpPriority);
-		}
-	    }
-	}
-	XLOGGER.exit();
+        XLOGGER.entry();
+        // Get the custom priority
+        for (final String element : priorityList) {
+            // So count the token separated by ","
+            final StringTokenizer token = new StringTokenizer(element.trim(), ",");
+            if (token.countTokens() == 2) {
+                // To avoid the pb of case
+                final String tmpQualityName = token.nextToken().trim().toUpperCase(Locale.getDefault());
+                // If the custom state exist
+                if (QualityUtilities.isQualityExist(tmpQualityName)) {
+                    final int tmpPriority = Integer.valueOf(token.nextToken().trim());
+                    qualityManager.putQualityPriority(QualityUtilities.getQualityForName(tmpQualityName), tmpPriority);
+                }
+            }
+        }
+        XLOGGER.exit();
     }
 
     private int getIndexForAttribute(final String attributeName) {
-	XLOGGER.entry();
-	int idx = -1;
-	for (int i = 0; i < fullAttributeNameList.size(); i++) {
-	    if (fullAttributeNameList.get(i).trim().equalsIgnoreCase(attributeName)) {
-		idx = i;
-	    }
-	}
-	XLOGGER.exit();
-	return idx;
+        XLOGGER.entry();
+        int idx = -1;
+        for (int i = 0; i < fullAttributeNameList.size(); i++) {
+            if (fullAttributeNameList.get(i).trim().equalsIgnoreCase(attributeName)) {
+                idx = i;
+            }
+        }
+        XLOGGER.exit();
+        return idx;
     }
 
     /**
@@ -364,14 +364,14 @@ public final class AttributeComposer {
      */
     @Command(name = "GetLogicalChoices", displayLevel = 1)
     public String[] getLogicalChoices() throws DevFailed {
-	XLOGGER.entry();
-	final LogicalGateType[] values = LogicalGateType.values();
-	final String[] logicalChoices = new String[values.length];
-	for (int i = 0; i < logicalChoices.length; i++) {
-	    logicalChoices[i] = values[i].toString();
-	}
-	XLOGGER.exit();
-	return logicalChoices;
+        XLOGGER.entry();
+        final LogicalGateType[] values = LogicalGateType.values();
+        final String[] logicalChoices = new String[values.length];
+        for (int i = 0; i < logicalChoices.length; i++) {
+            logicalChoices[i] = values[i].toString();
+        }
+        XLOGGER.exit();
+        return logicalChoices;
     }
 
     /**
@@ -379,52 +379,52 @@ public final class AttributeComposer {
      */
     @Command(name = "GetPriorityForQuality")
     public short getPriorityForQuality(final String argin) throws DevFailed {
-	XLOGGER.entry();
-	LOGGER.debug(" argin {}", argin);
-	final short argout = (short) qualityManager.getPriorityForQuality(argin);
-	XLOGGER.exit();
-	return argout;
+        XLOGGER.entry();
+        LOGGER.debug(" argin {}", argin);
+        final short argout = (short) qualityManager.getPriorityForQuality(argin);
+        XLOGGER.exit();
+        return argout;
 
     }
 
     public double[] getSpectrumResult() {
-	XLOGGER.entry();
+        XLOGGER.entry();
 
-	if (valueReader != null) {
-	    spectrumResult = new double[fullAttributeNameList.size()];
-	    for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
-		final String attrName = entry.getKey();
-		final double value = entry.getValue();
-		final int index = getIndexForAttribute(attrName);
-		spectrumResult[index] = value;
-	    }
-	}
-	XLOGGER.exit();
-	return Arrays.copyOf(spectrumResult, spectrumResult.length);
+        if (valueReader != null) {
+            spectrumResult = new double[fullAttributeNameList.size()];
+            for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
+                final String attrName = entry.getKey();
+                final double value = entry.getValue();
+                final int index = getIndexForAttribute(attrName);
+                spectrumResult[index] = value;
+            }
+        }
+        XLOGGER.exit();
+        return Arrays.copyOf(spectrumResult, spectrumResult.length);
     }
 
     public DeviceState getState() {
-	if (stateReader != null) {
-	    final DeviceState newState = DeviceState.getDeviceState(stateReader.getState());
-	    if (!state.equals(newState)) {
-		lastStateEvent = newState.toString() + " at " + DATE_FORMAT.format(new Date());
-		state = newState;
-	    }
-	} else if (valueReader != null) {
-	    final DeviceState newState = valueReader.getState();
-	    if (!state.equals(newState)) {
-		lastStateEvent = newState.toString() + " at " + DATE_FORMAT.format(new Date());
-		state = newState;
-	    }
-	}
-	return state;
+        if (stateReader != null) {
+            final DeviceState newState = DeviceState.getDeviceState(stateReader.getState());
+            if (!state.equals(newState)) {
+                lastStateEvent = newState.toString() + " at " + DATE_FORMAT.format(new Date());
+                state = newState;
+            }
+        } else if (valueReader != null) {
+            final DeviceState newState = valueReader.getState();
+            if (!state.equals(newState)) {
+                lastStateEvent = newState.toString() + " at " + DATE_FORMAT.format(new Date());
+                state = newState;
+            }
+        }
+        return state;
     }
 
     public String getStatus() {
-	if (valueReader != null) {
-	    status = valueReader.getStatus();
-	}
-	return status;
+        if (valueReader != null) {
+            status = valueReader.getStatus();
+        }
+        return status;
     }
 
     /**
@@ -432,112 +432,115 @@ public final class AttributeComposer {
      */
     @Command(name = "GetTangoQualities", displayLevel = 1)
     public String[] getTangoQualities() throws DevFailed {
-	XLOGGER.entry();
-	XLOGGER.exit();
-	return QualityUtilities.QUALITYIST;
+        XLOGGER.entry();
+        XLOGGER.exit();
+        return QualityUtilities.QUALITYIST;
     }
 
     @Init(lazyLoading = true)
     public void initDevice() throws DevFailed {
-	XLOGGER.entry();
+        XLOGGER.entry();
 
-	createAttributeGroup();
+        createAttributeGroup();
 
-	// add attribute for group to write on it
-	final GroupAttribute attribute = new GroupAttribute("mean", false,
-		fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
-	dynMngt.addAttribute(attribute);
+        // add attribute for group to write on it
+        final GroupAttribute attribute = new GroupAttribute("mean", false,
+                fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
+        dynMngt.addAttribute(attribute);
 
-	configureCustomPriorityList();
-	// create a timer to read attributes
+        configureCustomPriorityList();
+        // create a timer to read attributes
 
-	executor = Executors.newScheduledThreadPool(1);
-	valueReader = new AttributeGroupTaskReader(attributeGroup, attribute, qualityManager);
-	future = executor.scheduleAtFixedRate(valueReader, 0L, internalReadingPeriod, TimeUnit.MILLISECONDS);
+        executor = Executors.newScheduledThreadPool(1);
+        valueReader = new AttributeComposerReader(attributeGroup, attribute, qualityManager);
+        Runnable task = valueReader.getTask();
+        if (task != null) {
+            future = executor.scheduleAtFixedRate(task, 0L, internalReadingPeriod, TimeUnit.MILLISECONDS);
+        }
 
-	// retrieve device name from attribute name
-	final Set<String> deviceNameList = new HashSet<String>();
-	for (final String element : fullAttributeNameList) {
-	    final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
-	    deviceNameList.add(deviceName);
-	}
-	LOGGER.debug("doing state composition {}", isStateComposer);
-	// configure state composition
-	if (isStateComposer) {
-	    LOGGER.debug("doing state composition");
-	    stateReader = new StateResolver(internalReadingPeriod, false);
-	    stateReader.configurePriorities(statePriorities);
+        // retrieve device name from attribute name
+        final Set<String> deviceNameList = new HashSet<String>();
+        for (final String element : fullAttributeNameList) {
+            final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
+            deviceNameList.add(deviceName);
+        }
+        LOGGER.debug("doing state composition {}", isStateComposer);
+        // configure state composition
+        if (isStateComposer) {
+            LOGGER.debug("doing state composition");
+            stateReader = new StateResolver(internalReadingPeriod, false);
+            stateReader.configurePriorities(statePriorities);
 
-	    stateReader.setMonitoredDevices(individualTimeout,
-		    deviceNameList.toArray(new String[deviceNameList.size()]));
-	    stateReader.start();
-	}
+            stateReader.setMonitoredDevices(individualTimeout,
+                    deviceNameList.toArray(new String[deviceNameList.size()]));
+            stateReader.start();
+        }
 
-	// creat dynamic group command
-	createDynamicCommands(deviceNameList);
+        // creat dynamic group command
+        createDynamicCommands(deviceNameList);
 
-	XLOGGER.exit();
+        XLOGGER.exit();
     }
 
     private void createAttributeGroup() throws DevFailed {
-	// configure the attribute group
+        // configure the attribute group
 
-	// set to remove duplications
-	final Set<String> set = new LinkedHashSet<String>(Arrays.asList(attributeNameList));
-	// retrieve full name from pattern
-	for (final String attributePattern : set) {
-	    if (attributePattern.contains("*") && attributePattern.contains("/")) {
-		final String devicePattern = attributePattern.substring(0, attributePattern.lastIndexOf('/'));
-		final String attributeName = attributePattern.substring(attributePattern.lastIndexOf('/'));
-		final List<String> deviceNames = Arrays.asList(TangoUtil.getDevicesForPattern(devicePattern));
-		final List<String> attributesNames = new ArrayList<String>();
-		for (final String deviceName : deviceNames) {
-		    attributesNames.add(deviceName + attributeName);
-		}
-		fullAttributeNameList.addAll(attributesNames);
-	    } else {
-		fullAttributeNameList.add(attributePattern);
-	    }
-	}
+        // set to remove duplications
+        final Set<String> set = new LinkedHashSet<String>(Arrays.asList(attributeNameList));
+        // retrieve full name from pattern
+        for (final String attributePattern : set) {
+            if (attributePattern.contains("*") && attributePattern.contains("/")) {
+                final String devicePattern = attributePattern.substring(0, attributePattern.lastIndexOf('/'));
+                final String attributeName = attributePattern.substring(attributePattern.lastIndexOf('/'));
+                final List<String> deviceNames = Arrays.asList(TangoUtil.getDevicesForPattern(devicePattern));
+                final List<String> attributesNames = new ArrayList<String>();
+                for (final String deviceName : deviceNames) {
+                    attributesNames.add(deviceName + attributeName);
+                }
+                fullAttributeNameList.addAll(attributesNames);
+            } else {
+                fullAttributeNameList.add(attributePattern);
+            }
+        }
 
-	attributeGroup = new TangoGroupAttribute(false, fullAttributeNameList.toArray(new String[fullAttributeNameList
-		.size()]));
-	attributeNameArray = new String[fullAttributeNameList.size()];
-	int i = 0;
-	for (final String attribute : fullAttributeNameList) {
-	    attributeNameArray[i++] = TangoUtil.getAttributeName(attribute);
-	}
+        attributeGroup = new TangoGroupAttribute(false, fullAttributeNameList.toArray(new String[fullAttributeNameList
+                                                                                                 .size()]));
+        attributeNameArray = new String[fullAttributeNameList.size()];
+        int i = 0;
+        for (final String attribute : fullAttributeNameList) {
+            attributeNameArray[i++] = TangoUtil.getAttributeName(attribute);
+        }
 
     }
 
     private void createDynamicCommands(final Set<String> deviceNameList) throws DevFailed {
-	if (commandNameList.length > 0 && !commandNameList[0].trim().equals("")) {
-	    // use set to suppress duplicate elements
-	    final Set<String> cmdList = new HashSet<String>(Arrays.asList(commandNameList));
-	    for (final String element : cmdList) {
-		final String commandName = element.trim();
-		if (!commandName.isEmpty()) {
-		    final GroupCommand behavior = new GroupCommand(commandName,
-			    deviceNameList.toArray(new String[deviceNameList.size()]));
-		    dynMngt.addCommand(behavior);
-		}
-	    }
-	}
+        if ((commandNameList.length > 0) && !commandNameList[0].trim().equals("")) {
+            // use set to suppress duplicate elements
+            final Set<String> cmdList = new HashSet<String>(Arrays.asList(commandNameList));
+            for (final String element : cmdList) {
+                final String commandName = element.trim();
+                if (!commandName.isEmpty()) {
+                    final GroupCommand behavior = new GroupCommand(commandName,
+                            deviceNameList.toArray(new String[deviceNameList.size()]));
+                    dynMngt.addCommand(behavior);
+                }
+            }
+        }
     }
 
     @Delete
     public void deleteDevice() throws DevFailed {
-	fullAttributeNameList.clear();
-	if (stateReader != null) {
-	    stateReader.stop();
-	}
-	if (future != null) {
-	    future.cancel(true);
-	}
-	if (executor != null) {
-	    executor.shutdownNow();
-	}
-	dynMngt.clearAll();
+        fullAttributeNameList.clear();
+        if (stateReader != null) {
+            stateReader.stop();
+        }
+        if (future != null) {
+            future.cancel(true);
+        }
+        if (executor != null) {
+            executor.shutdownNow();
+        }
+        dynMngt.clearAll();
     }
 
     /**
@@ -545,9 +548,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllFormat")
     public void setAllFormat(final String argin) throws DevFailed {
-	XLOGGER.entry(argin);
-	setAttributeProperty(argin, PropertyType.FORMAT);
-	XLOGGER.exit();
+        XLOGGER.entry(argin);
+        setAttributeProperty(argin, PropertyType.FORMAT);
+        XLOGGER.exit();
     }
 
     /**
@@ -555,9 +558,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllLabel")
     public void setAllLabel(final String argin) throws DevFailed {
-	XLOGGER.entry(argin);
-	setAttributeProperty(argin, PropertyType.LABEL);
-	XLOGGER.exit();
+        XLOGGER.entry(argin);
+        setAttributeProperty(argin, PropertyType.LABEL);
+        XLOGGER.exit();
     }
 
     /**
@@ -566,9 +569,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllMaxAlarm")
     public void setAllMaxAlarm(final double argin) throws DevFailed {
-	XLOGGER.entry(argin);
-	setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MAX);
-	XLOGGER.exit();
+        XLOGGER.entry(argin);
+        setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MAX);
+        XLOGGER.exit();
     }
 
     /**
@@ -576,9 +579,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllMaxValue")
     public void setAllMaxValue(final double argin) throws DevFailed {
-	XLOGGER.entry(argin);
-	setAttributeProperty(String.valueOf(argin), PropertyType.MAX_VAL);
-	XLOGGER.exit();
+        XLOGGER.entry(argin);
+        setAttributeProperty(String.valueOf(argin), PropertyType.MAX_VAL);
+        XLOGGER.exit();
     }
 
     /**
@@ -587,9 +590,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllMinAlarm")
     public void setAllMinAlarm(final double argin) throws DevFailed {
-	XLOGGER.entry(argin);
-	setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MIN);
-	XLOGGER.exit();
+        XLOGGER.entry(argin);
+        setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MIN);
+        XLOGGER.exit();
     }
 
     /**
@@ -597,9 +600,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllMinValue")
     public void setAllMinValue(final double argin) throws DevFailed {
-	XLOGGER.entry(argin);
-	setAttributeProperty(String.valueOf(argin), PropertyType.MIN_VAL);
-	XLOGGER.exit();
+        XLOGGER.entry(argin);
+        setAttributeProperty(String.valueOf(argin), PropertyType.MIN_VAL);
+        XLOGGER.exit();
     }
 
     /**
@@ -607,9 +610,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllUnit")
     public void setAllUnit(final String argin) throws DevFailed {
-	XLOGGER.entry(argin);
-	setAttributeProperty(argin, PropertyType.UNIT);
-	XLOGGER.exit();
+        XLOGGER.entry(argin);
+        setAttributeProperty(argin, PropertyType.UNIT);
+        XLOGGER.exit();
     }
 
     /**
@@ -617,47 +620,47 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllValues")
     public void setAllValues(final double argin) throws DevFailed {
-	XLOGGER.entry(argin);
-	attributeGroup.write(argin);
-	XLOGGER.exit();
+        XLOGGER.entry(argin);
+        attributeGroup.write(argin);
+        XLOGGER.exit();
     }
 
     private void setAttributeProperty(final String property, final PropertyType type) throws DevFailed {
-	XLOGGER.entry();
-	LOGGER.debug("property {} ", property);
-	LOGGER.debug("type {} ", type);
-	// Get each proxy
-	for (int i = 0; i < attributeNameList.length; i++) {
-	    final DeviceProxy deviceProxy = attributeGroup.getGroup().getDevice(attributeNameList[i]);
-	    final AttributeInfo attributeInfo = deviceProxy.get_attribute_info(attributeNameArray[i]);
-	    switch (type) {
-	    case FORMAT:
-		attributeInfo.format = property;
-		break;
-	    case UNIT:
-		attributeInfo.unit = property;
-		break;
-	    case ALARM_MIN:
-		attributeInfo.min_alarm = property;
-		break;
-	    case ALARM_MAX:
-		attributeInfo.max_alarm = property;
-		break;
-	    case MIN_VAL:
-		attributeInfo.min_value = property;
-		break;
-	    case MAX_VAL:
-		attributeInfo.max_value = property;
-		break;
-	    case LABEL:
-		attributeInfo.label = property;
-		break;
-	    default:
-		DevFailedUtils.throwDevFailed("unknown property " + type);
-	    }
-	    deviceProxy.set_attribute_info(new AttributeInfo[] { attributeInfo });
-	}
-	XLOGGER.exit();
+        XLOGGER.entry();
+        LOGGER.debug("property {} ", property);
+        LOGGER.debug("type {} ", type);
+        // Get each proxy
+        for (int i = 0; i < attributeNameList.length; i++) {
+            final DeviceProxy deviceProxy = attributeGroup.getGroup().getDevice(attributeNameList[i]);
+            final AttributeInfo attributeInfo = deviceProxy.get_attribute_info(attributeNameArray[i]);
+            switch (type) {
+                case FORMAT:
+                    attributeInfo.format = property;
+                    break;
+                case UNIT:
+                    attributeInfo.unit = property;
+                    break;
+                case ALARM_MIN:
+                    attributeInfo.min_alarm = property;
+                    break;
+                case ALARM_MAX:
+                    attributeInfo.max_alarm = property;
+                    break;
+                case MIN_VAL:
+                    attributeInfo.min_value = property;
+                    break;
+                case MAX_VAL:
+                    attributeInfo.max_value = property;
+                    break;
+                case LABEL:
+                    attributeInfo.label = property;
+                    break;
+                default:
+                    DevFailedUtils.throwDevFailed("unknown property " + type);
+            }
+            deviceProxy.set_attribute_info(new AttributeInfo[] { attributeInfo });
+        }
+        XLOGGER.exit();
     }
 
     // public double getMean() {
@@ -669,88 +672,88 @@ public final class AttributeComposer {
     // }
 
     public double getStd() {
-	getSpectrumResult();
-	if (!ArrayUtils.isEmpty(spectrumResult)) {
-	    std = Math.sqrt(StatUtils.variance(spectrumResult));
-	}
-	return std;
+        getSpectrumResult();
+        if (!ArrayUtils.isEmpty(spectrumResult)) {
+            std = Math.sqrt(StatUtils.variance(spectrumResult));
+        }
+        return std;
     }
 
     public double getMax() {
-	getSpectrumResult();
-	if (!ArrayUtils.isEmpty(spectrumResult)) {
-	    max = StatUtils.max(spectrumResult);
-	}
-	return max;
+        getSpectrumResult();
+        if (!ArrayUtils.isEmpty(spectrumResult)) {
+            max = StatUtils.max(spectrumResult);
+        }
+        return max;
     }
 
     public double getMin() {
-	getSpectrumResult();
-	if (!ArrayUtils.isEmpty(spectrumResult)) {
-	    min = StatUtils.min(spectrumResult);
-	}
-	return min;
+        getSpectrumResult();
+        if (!ArrayUtils.isEmpty(spectrumResult)) {
+            min = StatUtils.min(spectrumResult);
+        }
+        return min;
     }
 
     public boolean isBooleanResult() {
-	return booleanResult;
+        return booleanResult;
     }
 
     public String getLastStateEvent() {
-	return lastStateEvent;
+        return lastStateEvent;
     }
 
     public String getVersion() {
-	return version;
+        return version;
     }
 
     public void setState(final DeviceState state) {
-	this.state = state;
+        this.state = state;
     }
 
     public void setStatus(final String status) {
-	this.status = status;
+        this.status = status;
     }
 
     public void setDynMngt(final DynamicManager dynMngt) {
-	this.dynMngt = dynMngt;
+        this.dynMngt = dynMngt;
     }
 
     public void setAttributeNameList(final String[] attributeNameList) throws DevFailed {
-	if (attributeNameList.length > 0 || !attributeNameList[0].trim().isEmpty()) {
-	    this.attributeNameList = Arrays.copyOf(attributeNameList, attributeNameList.length);
-	} else {
-	    DevFailedUtils.throwDevFailed("INIT_ERROR", "No attribute defined in property");
-	}
+        if ((attributeNameList.length > 0) || !attributeNameList[0].trim().isEmpty()) {
+            this.attributeNameList = Arrays.copyOf(attributeNameList, attributeNameList.length);
+        } else {
+            DevFailedUtils.throwDevFailed("INIT_ERROR", "No attribute defined in property");
+        }
 
     }
 
     public void setIndividualTimeout(final int individualTimeout) {
-	this.individualTimeout = individualTimeout;
+        this.individualTimeout = individualTimeout;
     }
 
     public void setCommandNameList(final String[] commandNameList) {
-	this.commandNameList = Arrays.copyOf(commandNameList, commandNameList.length);
+        this.commandNameList = Arrays.copyOf(commandNameList, commandNameList.length);
     }
 
     public void setPriorityList(final String[] priorityList) {
-	this.priorityList = Arrays.copyOf(priorityList, priorityList.length);
+        this.priorityList = Arrays.copyOf(priorityList, priorityList.length);
     }
 
     public void setStateComposer(final boolean isStateComposer) {
-	this.isStateComposer = isStateComposer;
+        this.isStateComposer = isStateComposer;
     }
 
     public void setStatePriorities(final String[] statePriorities) {
-	this.statePriorities = Arrays.copyOf(statePriorities, statePriorities.length);
+        this.statePriorities = Arrays.copyOf(statePriorities, statePriorities.length);
     }
 
     public void setInternalReadingPeriod(final long internalReadingPeriod) {
-	this.internalReadingPeriod = internalReadingPeriod;
+        this.internalReadingPeriod = internalReadingPeriod;
     }
 
     public void setLogicalBoolean(final String logicalBoolean) {
-	this.logicalBoolean = logicalBoolean;
+        this.logicalBoolean = logicalBoolean;
     }
 
 }
