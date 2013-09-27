@@ -57,6 +57,7 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
     @Override
     public void updateErrorMessage(String completeAttributeName, String errorMessage) {
         errorReportMap.put(completeAttributeName, errorMessage);
+        attributeValueMap.put(completeAttributeName, Double.NaN);
     }
 
     @Override
