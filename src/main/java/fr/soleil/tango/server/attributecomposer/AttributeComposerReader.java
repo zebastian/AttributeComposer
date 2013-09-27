@@ -43,15 +43,35 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
     }
 
     @Override
-    public void updateReadValue(String completeAttributeName, double value) {
-        attributeValueMap.put(completeAttributeName, value);
+    public void updateReadValue(String completeAttributeName, Object value) {
+        double doubleValue = getValue(value);
+        attributeValueMap.put(completeAttributeName, doubleValue);
         errorReportMap.remove(completeAttributeName);
     }
 
-    @Override
-    public void updateWriteValue(String completeAttributeName, double value) {
-        // Nothing to do
+    private double getValue(Object value) {
+        double doubleValue = Double.NaN;
+        if (value instanceof Number) {
+            doubleValue = ((Number) value).doubleValue();
 
+        } else if (value instanceof Boolean) {
+            doubleValue = 0;
+            if ((Boolean) value) {
+                doubleValue = 1;
+            }
+        } else if (value instanceof String) {
+            try {
+                doubleValue = Double.valueOf((String) value);
+            } catch (NumberFormatException ex) {
+                doubleValue = Double.NaN;
+            }
+        }
+        return doubleValue;
+    }
+
+    @Override
+    public void updateWriteValue(String completeAttributeName, Object value) {
+        // Nothing to do
     }
 
     @Override
