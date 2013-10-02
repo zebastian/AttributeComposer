@@ -99,6 +99,17 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
     }
 
     @Override
+    public void updateWriteValueErrorMessage(String completeAttributeName, String errorMessage) {
+        // Nothing to do
+
+    }
+
+    @Override
+    public void updateAttributeInfoErrorMessage(String completeAttributeName, String errorMessage) {
+        // Nothing to do
+    }
+
+    @Override
     public void readingLoopFinished() {
         state = DeviceState.getDeviceState(qualityManager.getHighestPriorityState());
         status = "At least one attribute is of quality " + qualityManager.getHighestPriorityQualityAsString();
@@ -119,6 +130,7 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
     public String getStatus() {
         return status;
     }
+
 
 
 }
