@@ -5,8 +5,10 @@ import java.util.Map;
 
 import org.tango.DeviceState;
 import org.tango.server.dynamic.attribute.GroupAttribute;
+import org.tango.utils.DevFailedUtils;
 
 import fr.esrf.Tango.AttrQuality;
+import fr.esrf.Tango.DevFailed;
 import fr.esrf.TangoApi.AttributeInfoEx;
 import fr.esrf.TangoApi.DeviceAttribute;
 import fr.soleil.tango.attributecomposer.AttributeGroupTaskReader;
@@ -43,29 +45,9 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
 
     @Override
     public void updateReadValue(final String completeAttributeName, final Object value) {
-        final double doubleValue = getValue(value);
+        final double doubleValue = Double.valueOf(value.toString());
         attributeValueMap.put(completeAttributeName, doubleValue);
         errorReportMap.remove(completeAttributeName);
-    }
-
-    private double getValue(final Object value) {
-        double doubleValue = Double.NaN;
-        if (value instanceof Number) {
-            doubleValue = ((Number) value).doubleValue();
-
-        } else if (value instanceof Boolean) {
-            doubleValue = 0;
-            if ((Boolean) value) {
-                doubleValue = 1;
-            }
-        } else if (value instanceof String) {
-            try {
-                doubleValue = Double.valueOf((String) value);
-            } catch (final NumberFormatException ex) {
-                doubleValue = Double.NaN;
-            }
-        }
-        return doubleValue;
     }
 
     @Override
@@ -93,8 +75,18 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
     public void catchException(final Exception exception) {
         if (exception != null) {
             state = DeviceState.FAULT;
-            status = exception.getMessage() + "\nError see attributesResultReport";
+            exception.printStackTrace();
+            status = "Error,  check attributesResultReport for details:\n " + exception.getMessage();
         }
+    }
+
+    @Override
+    public void catchDevFailed(final DevFailed exception) {
+        if (exception != null) {
+            state = DeviceState.FAULT;
+            status = "Error,  check attributesResultReport for details:\n " + DevFailedUtils.toString(exception);
+        }
+
     }
 
     @Override

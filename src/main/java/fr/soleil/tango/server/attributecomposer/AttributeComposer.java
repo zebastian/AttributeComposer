@@ -71,9 +71,9 @@ public final class AttributeComposer {
      */
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AttributeComposer.class);
+    private final Logger logger = LoggerFactory.getLogger(AttributeComposer.class);
 
-    private static final XLogger XLOGGER = XLoggerFactory.getXLogger(AttributeComposer.class);
+    private final XLogger xlogger = XLoggerFactory.getXLogger(AttributeComposer.class);
 
     /**
      * MAIN
@@ -228,13 +228,13 @@ public final class AttributeComposer {
      */
     @Command(name = "GetAttributeNameForIndex")
     public String getAttributeNameForIndex(final short argin) throws DevFailed {
-        XLOGGER.entry();
+        xlogger.entry();
         String argout = "Unknown Index";
-        LOGGER.debug("argin {}", argin);
+        logger.debug("argin {}", argin);
         if (!fullAttributeNameList.isEmpty()) {
             argout = fullAttributeNameList.get(argin);
         }
-        XLOGGER.exit();
+        xlogger.exit();
         return argout;
     }
 
@@ -245,9 +245,9 @@ public final class AttributeComposer {
      */
     @Attribute
     public short[] getAttributesNumberPriorityList() {
-        XLOGGER.entry();
+        xlogger.entry();
         final short[] attributesNumberPriorityList = qualityManager.getQualityNumberArray();
-        XLOGGER.exit();
+        xlogger.exit();
         return attributesNumberPriorityList;
     }
 
@@ -257,9 +257,9 @@ public final class AttributeComposer {
      */
     @Attribute
     public String[] getAttributesQualityList() {
-        XLOGGER.entry();
+        xlogger.entry();
         final String[] attributesQualityList = qualityManager.getQualityArray();
-        XLOGGER.exit();
+        xlogger.exit();
         return attributesQualityList;
     }
 
@@ -268,7 +268,7 @@ public final class AttributeComposer {
      */
     @Attribute
     public String[] getAttributesResultReport() {
-        XLOGGER.entry();
+        xlogger.entry();
         String[] attributesResultReport = null;
         if (valueReader != null) {
             final Map<String, String> errorReportMap = valueReader.getErrorReportMap();
@@ -282,7 +282,7 @@ public final class AttributeComposer {
                 attributesResultReport = new String[] { "no value" };
             }
         }
-        XLOGGER.exit();
+        xlogger.exit();
         return attributesResultReport;
     }
 
@@ -291,7 +291,7 @@ public final class AttributeComposer {
      */
     @Attribute
     public boolean[] getBooleanSpectrum() {
-        XLOGGER.entry();
+        xlogger.entry();
         final boolean[] booleanSpectrum;
         if (valueReader != null) {
             booleanSpectrum = new boolean[fullAttributeNameList.size()];
@@ -321,7 +321,7 @@ public final class AttributeComposer {
         } else {
             booleanSpectrum = new boolean[0];
         }
-        XLOGGER.exit();
+        xlogger.exit();
         return booleanSpectrum;
     }
 
@@ -329,7 +329,7 @@ public final class AttributeComposer {
      * Get the custom priority list
      */
     private void configureCustomPriorityList() {
-        XLOGGER.entry();
+        xlogger.entry();
         // Get the custom priority
         for (final String element : priorityList) {
             // So count the token separated by ","
@@ -344,18 +344,18 @@ public final class AttributeComposer {
                 }
             }
         }
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     private int getIndexForAttribute(final String attributeName) {
-        XLOGGER.entry();
+        xlogger.entry();
         int idx = -1;
         for (int i = 0; i < fullAttributeNameList.size(); i++) {
             if (fullAttributeNameList.get(i).trim().equalsIgnoreCase(attributeName)) {
                 idx = i;
             }
         }
-        XLOGGER.exit();
+        xlogger.exit();
         return idx;
     }
 
@@ -364,13 +364,13 @@ public final class AttributeComposer {
      */
     @Command(name = "GetLogicalChoices", displayLevel = 1)
     public String[] getLogicalChoices() throws DevFailed {
-        XLOGGER.entry();
+        xlogger.entry();
         final LogicalGateType[] values = LogicalGateType.values();
         final String[] logicalChoices = new String[values.length];
         for (int i = 0; i < logicalChoices.length; i++) {
             logicalChoices[i] = values[i].toString();
         }
-        XLOGGER.exit();
+        xlogger.exit();
         return logicalChoices;
     }
 
@@ -379,16 +379,16 @@ public final class AttributeComposer {
      */
     @Command(name = "GetPriorityForQuality")
     public short getPriorityForQuality(final String argin) throws DevFailed {
-        XLOGGER.entry();
-        LOGGER.debug(" argin {}", argin);
+        xlogger.entry();
+        logger.debug(" argin {}", argin);
         final short argout = (short) qualityManager.getPriorityForQuality(argin);
-        XLOGGER.exit();
+        xlogger.exit();
         return argout;
 
     }
 
     public double[] getSpectrumResult() {
-        XLOGGER.entry();
+        xlogger.entry();
 
         if (valueReader != null) {
             spectrumResult = new double[fullAttributeNameList.size()];
@@ -399,7 +399,7 @@ public final class AttributeComposer {
                 spectrumResult[index] = value;
             }
         }
-        XLOGGER.exit();
+        xlogger.exit();
         return Arrays.copyOf(spectrumResult, spectrumResult.length);
     }
 
@@ -432,14 +432,14 @@ public final class AttributeComposer {
      */
     @Command(name = "GetTangoQualities", displayLevel = 1)
     public String[] getTangoQualities() throws DevFailed {
-        XLOGGER.entry();
-        XLOGGER.exit();
+        xlogger.entry();
+        xlogger.exit();
         return QualityUtilities.QUALITYIST;
     }
 
     @Init(lazyLoading = true)
     public void initDevice() throws DevFailed {
-        XLOGGER.entry();
+        xlogger.entry();
 
         createAttributeGroup();
 
@@ -453,7 +453,7 @@ public final class AttributeComposer {
 
         executor = Executors.newScheduledThreadPool(1);
         valueReader = new AttributeComposerReader(attributeGroup, attribute, qualityManager);
-        Runnable task = valueReader.getTask();
+        final Runnable task = valueReader.getTask();
         if (task != null) {
             future = executor.scheduleAtFixedRate(task, 0L, internalReadingPeriod, TimeUnit.MILLISECONDS);
         }
@@ -464,10 +464,10 @@ public final class AttributeComposer {
             final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
             deviceNameList.add(deviceName);
         }
-        LOGGER.debug("doing state composition {}", isStateComposer);
+        logger.debug("doing state composition {}", isStateComposer);
         // configure state composition
         if (isStateComposer) {
-            LOGGER.debug("doing state composition");
+            logger.debug("doing state composition");
             stateReader = new StateResolver(internalReadingPeriod, false);
             stateReader.configurePriorities(statePriorities);
 
@@ -479,7 +479,7 @@ public final class AttributeComposer {
         // creat dynamic group command
         createDynamicCommands(deviceNameList);
 
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     private void createAttributeGroup() throws DevFailed {
@@ -504,7 +504,7 @@ public final class AttributeComposer {
         }
 
         attributeGroup = new TangoGroupAttribute(false, fullAttributeNameList.toArray(new String[fullAttributeNameList
-                                                                                                 .size()]));
+                .size()]));
         attributeNameArray = new String[fullAttributeNameList.size()];
         int i = 0;
         for (final String attribute : fullAttributeNameList) {
@@ -514,7 +514,7 @@ public final class AttributeComposer {
     }
 
     private void createDynamicCommands(final Set<String> deviceNameList) throws DevFailed {
-        if ((commandNameList.length > 0) && !commandNameList[0].trim().equals("")) {
+        if (commandNameList.length > 0 && !commandNameList[0].trim().equals("")) {
             // use set to suppress duplicate elements
             final Set<String> cmdList = new HashSet<String>(Arrays.asList(commandNameList));
             for (final String element : cmdList) {
@@ -548,9 +548,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllFormat")
     public void setAllFormat(final String argin) throws DevFailed {
-        XLOGGER.entry(argin);
+        xlogger.entry(argin);
         setAttributeProperty(argin, PropertyType.FORMAT);
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     /**
@@ -558,9 +558,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllLabel")
     public void setAllLabel(final String argin) throws DevFailed {
-        XLOGGER.entry(argin);
+        xlogger.entry(argin);
         setAttributeProperty(argin, PropertyType.LABEL);
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     /**
@@ -569,9 +569,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllMaxAlarm")
     public void setAllMaxAlarm(final double argin) throws DevFailed {
-        XLOGGER.entry(argin);
+        xlogger.entry(argin);
         setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MAX);
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     /**
@@ -579,9 +579,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllMaxValue")
     public void setAllMaxValue(final double argin) throws DevFailed {
-        XLOGGER.entry(argin);
+        xlogger.entry(argin);
         setAttributeProperty(String.valueOf(argin), PropertyType.MAX_VAL);
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     /**
@@ -590,9 +590,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllMinAlarm")
     public void setAllMinAlarm(final double argin) throws DevFailed {
-        XLOGGER.entry(argin);
+        xlogger.entry(argin);
         setAttributeProperty(String.valueOf(argin), PropertyType.ALARM_MIN);
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     /**
@@ -600,9 +600,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllMinValue")
     public void setAllMinValue(final double argin) throws DevFailed {
-        XLOGGER.entry(argin);
+        xlogger.entry(argin);
         setAttributeProperty(String.valueOf(argin), PropertyType.MIN_VAL);
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     /**
@@ -610,9 +610,9 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllUnit")
     public void setAllUnit(final String argin) throws DevFailed {
-        XLOGGER.entry(argin);
+        xlogger.entry(argin);
         setAttributeProperty(argin, PropertyType.UNIT);
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     /**
@@ -620,15 +620,15 @@ public final class AttributeComposer {
      */
     @Command(name = "SetAllValues")
     public void setAllValues(final double argin) throws DevFailed {
-        XLOGGER.entry(argin);
+        xlogger.entry(argin);
         attributeGroup.write(argin);
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     private void setAttributeProperty(final String property, final PropertyType type) throws DevFailed {
-        XLOGGER.entry();
-        LOGGER.debug("property {} ", property);
-        LOGGER.debug("type {} ", type);
+        xlogger.entry();
+        logger.debug("property {} ", property);
+        logger.debug("type {} ", type);
         // Get each proxy
         for (int i = 0; i < attributeNameList.length; i++) {
             final DeviceProxy deviceProxy = attributeGroup.getGroup().getDevice(attributeNameList[i]);
@@ -660,7 +660,7 @@ public final class AttributeComposer {
             }
             deviceProxy.set_attribute_info(new AttributeInfo[] { attributeInfo });
         }
-        XLOGGER.exit();
+        xlogger.exit();
     }
 
     // public double getMean() {
@@ -720,7 +720,7 @@ public final class AttributeComposer {
     }
 
     public void setAttributeNameList(final String[] attributeNameList) throws DevFailed {
-        if ((attributeNameList.length > 0) || !attributeNameList[0].trim().isEmpty()) {
+        if (attributeNameList.length > 0 || !attributeNameList[0].trim().isEmpty()) {
             this.attributeNameList = Arrays.copyOf(attributeNameList, attributeNameList.length);
         } else {
             DevFailedUtils.throwDevFailed("INIT_ERROR", "No attribute defined in property");
