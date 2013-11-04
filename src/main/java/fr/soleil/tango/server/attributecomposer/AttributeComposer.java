@@ -444,21 +444,18 @@ public final class AttributeComposer {
         createAttributeGroup();
 
         // add attribute for group to write on it
-        final GroupAttribute attribute = new GroupAttribute("mean", false,
+        final GroupAttribute meanAttribute = new GroupAttribute("mean", false,
                 fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
-        dynMngt.addAttribute(attribute);
+        dynMngt.addAttribute(meanAttribute);
 
         configureCustomPriorityList();
+
         // create a timer to read attributes
-
         executor = Executors.newScheduledThreadPool(1);
-        valueReader = new AttributeComposerReader(attributeGroup, attribute, qualityManager);
-        final Runnable task = valueReader.getTask();
-        if (task != null) {
-            future = executor.scheduleAtFixedRate(task, 0L, internalReadingPeriod, TimeUnit.MILLISECONDS);
-        }
+        valueReader = new AttributeComposerReader(attributeGroup, meanAttribute, qualityManager);
+        future = executor.scheduleAtFixedRate(valueReader.getTask(), 0L, internalReadingPeriod, TimeUnit.MILLISECONDS);
 
-        // retrieve device name from attribute name
+        // retrieve device names from attribute names
         final Set<String> deviceNameList = new HashSet<String>();
         for (final String element : fullAttributeNameList) {
             final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
@@ -467,10 +464,8 @@ public final class AttributeComposer {
         logger.debug("doing state composition {}", isStateComposer);
         // configure state composition
         if (isStateComposer) {
-            logger.debug("doing state composition");
             stateReader = new StateResolver(internalReadingPeriod, false);
             stateReader.configurePriorities(statePriorities);
-
             stateReader.setMonitoredDevices(individualTimeout,
                     deviceNameList.toArray(new String[deviceNameList.size()]));
             stateReader.start();

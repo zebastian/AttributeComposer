@@ -19,6 +19,9 @@ import fr.soleil.tango.clientapi.TangoGroupAttribute;
 public final class AttributeComposerReader implements IAttributeGroupTaskListener {
 
     private final PriorityQualityManager qualityManager;
+    /**
+     * Dynamic attribute of the device. Read part will be updated here
+     */
     private final GroupAttribute attributeToUpdate;
     private final Map<String, String> errorReportMap = new HashMap<String, String>();
     private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
@@ -75,7 +78,6 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
     public void catchException(final Exception exception) {
         if (exception != null) {
             state = DeviceState.FAULT;
-            exception.printStackTrace();
             status = "Error,  check attributesResultReport for details:\n " + exception.getMessage();
         }
     }
@@ -102,8 +104,10 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
 
     @Override
     public void readingLoopFinished() {
-        state = DeviceState.getDeviceState(qualityManager.getHighestPriorityState());
-        status = "At least one attribute is of quality " + qualityManager.getHighestPriorityQualityAsString();
+        if (errorReportMap.isEmpty()) {
+            state = DeviceState.getDeviceState(qualityManager.getHighestPriorityState());
+            status = "At least one attribute is of quality " + qualityManager.getHighestPriorityQualityAsString();
+        }
     }
 
     public Map<String, String> getErrorReportMap() {
