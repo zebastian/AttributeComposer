@@ -13,10 +13,6 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.math.stat.StatUtils;
@@ -46,6 +42,8 @@ import fr.esrf.Tango.DispLevel;
 import fr.esrf.TangoApi.AttributeInfo;
 import fr.esrf.TangoApi.DeviceProxy;
 import fr.esrf.TangoApi.QualityUtilities;
+import fr.soleil.tango.attributecomposer.AttributeGroupReader;
+import fr.soleil.tango.attributecomposer.AttributeGroupScheduler;
 import fr.soleil.tango.attributecomposer.PriorityQualityManager;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
 import fr.soleil.tango.statecomposer.StateResolver;
@@ -163,7 +161,7 @@ public final class AttributeComposer {
     @DynamicManagement
     private DynamicManager dynMngt;
 
-    private ScheduledExecutorService executor;
+//    private ScheduledExecutorService executor;
     /**
      * The table of the attribute name and their associated proxy group <attributeName, Group>
      */
@@ -174,7 +172,7 @@ public final class AttributeComposer {
      */
     private String[] attributeNameArray;
 
-    private ScheduledFuture<?> future;
+//    private ScheduledFuture<?> future;
 
     private StateResolver stateReader;
 
@@ -196,6 +194,8 @@ public final class AttributeComposer {
     private String status = "";
 
     private AttributeComposerReader valueReader;
+
+    private AttributeGroupScheduler readScheduler;
 
     /**
      * The number version of the device
@@ -451,9 +451,14 @@ public final class AttributeComposer {
         configureCustomPriorityList();
 
         // create a timer to read attributes
-        executor = Executors.newScheduledThreadPool(1);
+        // executor = Executors.newScheduledThreadPool(1);
+
         valueReader = new AttributeComposerReader(attributeGroup, meanAttribute, qualityManager);
-        future = executor.scheduleAtFixedRate(valueReader.getTask(), 0L, internalReadingPeriod, TimeUnit.MILLISECONDS);
+        final AttributeGroupReader task = new AttributeGroupReader(valueReader, attributeGroup, false, true, false);
+        readScheduler = new AttributeGroupScheduler();
+        readScheduler.start(task, internalReadingPeriod);
+        // future = executor.scheduleAtFixedRate(valueReader.getTask(), 0L, internalReadingPeriod,
+        // TimeUnit.MILLISECONDS);
 
         // retrieve device names from attribute names
         final Set<String> deviceNameList = new HashSet<String>();
@@ -529,12 +534,13 @@ public final class AttributeComposer {
         if (stateReader != null) {
             stateReader.stop();
         }
-        if (future != null) {
-            future.cancel(true);
-        }
-        if (executor != null) {
-            executor.shutdownNow();
-        }
+//        if (future != null) {
+//            future.cancel(true);
+//        }
+//        if (executor != null) {
+//            executor.shutdownNow();
+//        }
+        readScheduler.stop();
         dynMngt.clearAll();
     }
 

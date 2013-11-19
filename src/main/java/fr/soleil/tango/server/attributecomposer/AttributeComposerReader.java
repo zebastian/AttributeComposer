@@ -11,7 +11,6 @@ import fr.esrf.Tango.AttrQuality;
 import fr.esrf.Tango.DevFailed;
 import fr.esrf.TangoApi.AttributeInfoEx;
 import fr.esrf.TangoApi.DeviceAttribute;
-import fr.soleil.tango.attributecomposer.AttributeGroupTaskReader;
 import fr.soleil.tango.attributecomposer.IAttributeGroupTaskListener;
 import fr.soleil.tango.attributecomposer.PriorityQualityManager;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
@@ -25,7 +24,6 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
     private final GroupAttribute attributeToUpdate;
     private final Map<String, String> errorReportMap = new HashMap<String, String>();
     private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
-    private final Runnable task;
 
     private DeviceState state = DeviceState.UNKNOWN;
     private String status = "";
@@ -34,11 +32,6 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
             final PriorityQualityManager qualityManager) {
         this.qualityManager = qualityManager;
         this.attributeToUpdate = attributeToUpdate;
-        task = new AttributeGroupTaskReader(this, attributeGroup, false, true, false);
-    }
-
-    public Runnable getTask() {
-        return task;
     }
 
     @Override
