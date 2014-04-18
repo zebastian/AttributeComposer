@@ -26,11 +26,14 @@ import org.tango.server.annotation.Attribute;
 import org.tango.server.annotation.Command;
 import org.tango.server.annotation.Delete;
 import org.tango.server.annotation.Device;
+import org.tango.server.annotation.DeviceManagement;
 import org.tango.server.annotation.DeviceProperty;
 import org.tango.server.annotation.DynamicManagement;
 import org.tango.server.annotation.Init;
 import org.tango.server.annotation.State;
 import org.tango.server.annotation.Status;
+import org.tango.server.annotation.TransactionType;
+import org.tango.server.device.DeviceManager;
 import org.tango.server.dynamic.DynamicManager;
 import org.tango.server.dynamic.attribute.GroupAttribute;
 import org.tango.server.dynamic.command.GroupCommand;
@@ -48,7 +51,7 @@ import fr.soleil.tango.attributecomposer.PriorityQualityManager;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
 import fr.soleil.tango.statecomposer.StateResolver;
 
-@Device
+@Device(transactionType = TransactionType.NONE)
 public final class AttributeComposer {
 
     private static final int REFRESH_PERIOD = 3000;
@@ -160,6 +163,9 @@ public final class AttributeComposer {
 
     @DynamicManagement
     private DynamicManager dynMngt;
+
+    @DeviceManagement
+    private DeviceManager device;
 
 //    private ScheduledExecutorService executor;
     /**
@@ -473,7 +479,7 @@ public final class AttributeComposer {
             stateReader.configurePriorities(statePriorities);
             stateReader.setMonitoredDevices(individualTimeout,
                     deviceNameList.toArray(new String[deviceNameList.size()]));
-            stateReader.start();
+            stateReader.start(device.getName());
         }
 
         // creat dynamic group command
@@ -755,6 +761,10 @@ public final class AttributeComposer {
 
     public void setLogicalBoolean(final String logicalBoolean) {
         this.logicalBoolean = logicalBoolean;
+    }
+
+    public void setDevice(final DeviceManager device) {
+        this.device = device;
     }
 
 }
