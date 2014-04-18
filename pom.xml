@@ -54,10 +54,6 @@
 		</dependency>
 		<dependency>
 			<groupId>org.tango</groupId>
-			<artifactId>JTangoServerLang</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.tango</groupId>
 			<artifactId>JTangoServer</artifactId>
 		</dependency>
 	</dependencies>
