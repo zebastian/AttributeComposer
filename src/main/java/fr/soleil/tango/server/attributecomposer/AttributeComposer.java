@@ -458,7 +458,6 @@ public final class AttributeComposer {
 
         // create a timer to read attributes
         // executor = Executors.newScheduledThreadPool(1);
-
         valueReader = new AttributeComposerReader(attributeGroup, meanAttribute, qualityManager);
         final AttributeGroupReader task = new AttributeGroupReader(valueReader, attributeGroup, false, true, false);
         readScheduler = new AttributeGroupScheduler();
@@ -546,7 +545,9 @@ public final class AttributeComposer {
 //        if (executor != null) {
 //            executor.shutdownNow();
 //        }
-        readScheduler.stop();
+        if (readScheduler != null) {
+            readScheduler.stop();
+        }
         dynMngt.clearAll();
     }
 
