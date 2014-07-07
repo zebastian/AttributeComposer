@@ -538,6 +538,7 @@ public final class AttributeComposer {
         fullAttributeNameList.clear();
         if (stateReader != null) {
             stateReader.stop();
+            stateReader = null;
         }
 //        if (future != null) {
 //            future.cancel(true);
