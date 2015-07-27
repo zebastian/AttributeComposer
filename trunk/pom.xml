@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <artifactId>super-pom-java</artifactId>
+    <groupId>fr.soleil</groupId>
+    <version>RELEASE</version>
+  </parent>
+  <groupId>fr.soleil.deviceservers</groupId>
+  <artifactId>AttributeComposer</artifactId>
+  <version>4.1.4</version>
+  <name>Attribute Composer</name>
+  <description>Attribute Composer Device Server</description>
+  <developers>
+    <developer>
+      <id>abeille</id>
+      <name>Gwenaelle Abeille</name>
+      <email>gwenaelle.abeille@synchrotron-soleil.fr</email>
+      <organization>Synchrotron Soleil</organization>
+      <organizationUrl>http://www.synchrotron-soleil.fr</organizationUrl>
+      <roles>
+        <role>Manager</role>
+        <role>Java Developer</role>
+      </roles>
+      <timezone>1</timezone>
+    </developer>
+    <developer>
+      <id>saintin</id>
+      <name>Katy saintin</name>
+      <email>katy.saintin@synchrotron-soleil.fr</email>
+      <organization>Synchrotron Soleil</organization>
+      <organizationUrl>http://www.synchrotron-soleil.fr</organizationUrl>
+      <roles>
+        <role>Java Developer</role>
+      </roles>
+      <timezone>1</timezone>
+    </developer>
+  </developers>
+  <scm>
+    <connection>${scm.connection.svn.tango-ds}/DeviceClasses/Calculation/AttributeComposer/trunk/</connection>
+    <developerConnection>${scm.connection.svn.tango-ds}/DeviceClasses/Calculation/AttributeComposer/trunk/</developerConnection>
+    <url>${scm.connection.svn.tango-ds}/DeviceClasses/Calculation/AttributeComposer/trunk/</url>
+  </scm>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>fr.soleil.maven.plugins</groupId>
+        <artifactId>maven-script-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>install</id>
+            <phase>install</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <mainClass>fr.soleil.tango.server.attributecomposer.AttributeComposer</mainClass>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math3</artifactId>
+      <version>3.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.tango</groupId>
+      <artifactId>JTangoClientLang</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.tango</groupId>
+      <artifactId>JTangoServer</artifactId>
+    </dependency>
+  </dependencies>
+</project>
