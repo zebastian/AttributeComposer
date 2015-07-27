@@ -14,7 +14,7 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.StringTokenizer;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.stat.StatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,7 +111,7 @@ public final class AttributeComposer {
     /**
      * define is the device will read the monitored attributes' device states
      */
-    @DeviceProperty
+    @DeviceProperty(defaultValue = "true")
     private boolean isStateComposer;
 
     /**
@@ -167,7 +167,7 @@ public final class AttributeComposer {
     @DeviceManagement
     private DeviceManager device;
 
-//    private ScheduledExecutorService executor;
+    // private ScheduledExecutorService executor;
     /**
      * The table of the attribute name and their associated proxy group <attributeName, Group>
      */
@@ -178,7 +178,7 @@ public final class AttributeComposer {
      */
     private String[] attributeNameArray;
 
-//    private ScheduledFuture<?> future;
+    // private ScheduledFuture<?> future;
 
     private StateResolver stateReader;
 
@@ -427,7 +427,18 @@ public final class AttributeComposer {
     }
 
     public String getStatus() {
-        if (valueReader != null) {
+        final StringBuilder sb = new StringBuilder();
+        if (stateReader != null) {
+            final String[] st = stateReader.getDeviceStateArray();
+            sb.append("At least one device is in ");
+            sb.append(DeviceState.getDeviceState(stateReader.getState()));
+            sb.append(" state:\n");
+            for (final String element : st) {
+                sb.append(element);
+                sb.append("\n");
+            }
+            status = sb.toString();
+        } else if (valueReader != null) {
             status = valueReader.getStatus();
         }
         return status;
@@ -509,7 +520,7 @@ public final class AttributeComposer {
         }
 
         attributeGroup = new TangoGroupAttribute(false, fullAttributeNameList.toArray(new String[fullAttributeNameList
-                .size()]));
+                                                                                                 .size()]));
         attributeNameArray = new String[fullAttributeNameList.size()];
         int i = 0;
         for (final String attribute : fullAttributeNameList) {
@@ -540,12 +551,12 @@ public final class AttributeComposer {
             stateReader.stop();
             stateReader = null;
         }
-//        if (future != null) {
-//            future.cancel(true);
-//        }
-//        if (executor != null) {
-//            executor.shutdownNow();
-//        }
+        // if (future != null) {
+        // future.cancel(true);
+        // }
+        // if (executor != null) {
+        // executor.shutdownNow();
+        // }
         if (readScheduler != null) {
             readScheduler.stop();
         }
@@ -705,6 +716,8 @@ public final class AttributeComposer {
     }
 
     public boolean isBooleanResult() {
+        // calculate value
+        getBooleanSpectrum();
         return booleanResult;
     }
 

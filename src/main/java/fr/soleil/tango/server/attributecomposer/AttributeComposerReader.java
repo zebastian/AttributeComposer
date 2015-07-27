@@ -41,7 +41,13 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
 
     @Override
     public void updateReadValue(final String completeAttributeName, final Object value) {
-        final double doubleValue = Double.valueOf(value.toString());
+        final double doubleValue;
+        if (value instanceof Boolean) {
+            final boolean boolValue = (Boolean) value;
+            doubleValue = boolValue == true ? 1 : 0;
+        } else {
+            doubleValue = Double.valueOf(value.toString());
+        }
         attributeValueMap.put(completeAttributeName, doubleValue);
         errorReportMap.remove(completeAttributeName);
     }
