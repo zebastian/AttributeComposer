@@ -5,23 +5,25 @@ import java.util.Map;
 
 import org.tango.DeviceState;
 import org.tango.server.dynamic.attribute.GroupAttribute;
+import org.tango.utils.DevFailedUtils;
 
 import fr.esrf.Tango.AttrQuality;
+import fr.esrf.Tango.DevFailed;
 import fr.esrf.TangoApi.AttributeInfoEx;
 import fr.esrf.TangoApi.DeviceAttribute;
-import fr.esrf.TangoApi.Group.AttributeGroupTaskReader;
-import fr.esrf.TangoApi.Group.IAttributeGroupTaskListener;
+import fr.soleil.tango.attributecomposer.IAttributeGroupTaskListener;
 import fr.soleil.tango.attributecomposer.PriorityQualityManager;
 import fr.soleil.tango.clientapi.TangoGroupAttribute;
 
 public final class AttributeComposerReader implements IAttributeGroupTaskListener {
 
     private final PriorityQualityManager qualityManager;
+    /**
+     * Dynamic attribute of the device. Read part will be updated here
+     */
     private final GroupAttribute attributeToUpdate;
     private final Map<String, String> errorReportMap = new HashMap<String, String>();
     private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
-    private final Runnable task;
-
 
     private DeviceState state = DeviceState.UNKNOWN;
     private String status = "";
@@ -30,89 +32,81 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
             final PriorityQualityManager qualityManager) {
         this.qualityManager = qualityManager;
         this.attributeToUpdate = attributeToUpdate;
-        task = new AttributeGroupTaskReader(this, attributeGroup, false, true, false);
-    }
-
-    public Runnable getTask() {
-        return task;
     }
 
     @Override
-    public void updateDeviceAttribute(DeviceAttribute[] resultGroup) {
+    public void updateDeviceAttribute(final DeviceAttribute[] resultGroup) {
         attributeToUpdate.setReadValue(resultGroup);
     }
 
     @Override
-    public void updateReadValue(String completeAttributeName, Object value) {
-        double doubleValue = getValue(value);
+    public void updateReadValue(final String completeAttributeName, final Object value) {
+        final double doubleValue;
+        if (value instanceof Boolean) {
+            final boolean boolValue = (Boolean) value;
+            doubleValue = boolValue == true ? 1 : 0;
+        } else {
+            doubleValue = Double.valueOf(value.toString());
+        }
         attributeValueMap.put(completeAttributeName, doubleValue);
         errorReportMap.remove(completeAttributeName);
     }
 
-    private double getValue(Object value) {
-        double doubleValue = Double.NaN;
-        if (value instanceof Number) {
-            doubleValue = ((Number) value).doubleValue();
-
-        } else if (value instanceof Boolean) {
-            doubleValue = 0;
-            if ((Boolean) value) {
-                doubleValue = 1;
-            }
-        } else if (value instanceof String) {
-            try {
-                doubleValue = Double.valueOf((String) value);
-            } catch (NumberFormatException ex) {
-                doubleValue = Double.NaN;
-            }
-        }
-        return doubleValue;
-    }
-
     @Override
-    public void updateWriteValue(String completeAttributeName, Object value) {
+    public void updateWriteValue(final String completeAttributeName, final Object value) {
         // Nothing to do
     }
 
     @Override
-    public void updateErrorMessage(String completeAttributeName, String errorMessage) {
+    public void updateErrorMessage(final String completeAttributeName, final String errorMessage) {
         errorReportMap.put(completeAttributeName, errorMessage);
         attributeValueMap.put(completeAttributeName, Double.NaN);
     }
 
     @Override
-    public void updateAttributeInfoEx(String completeAttributeName, AttributeInfoEx attributeInfo) {
+    public void updateAttributeInfoEx(final String completeAttributeName, final AttributeInfoEx attributeInfo) {
         // Nothing to do
     }
 
     @Override
-    public void updateQuality(String completeAttributeName, AttrQuality quality) {
+    public void updateQuality(final String completeAttributeName, final AttrQuality quality) {
         qualityManager.putAttributeQuality(completeAttributeName, quality);
     }
 
     @Override
-    public void catchException(Exception exception) {
+    public void catchException(final Exception exception) {
         if (exception != null) {
             state = DeviceState.FAULT;
-            status = exception.getMessage() + "\nError see attributesResultReport";
+            status = "Error,  check attributesResultReport for details:\n " + exception.getMessage();
         }
     }
 
     @Override
-    public void updateWriteValueErrorMessage(String completeAttributeName, String errorMessage) {
+    public void catchDevFailed(final DevFailed exception) {
+        if (exception != null) {
+            state = DeviceState.FAULT;
+            status = "Error,  check attributesResultReport for details:\n " + DevFailedUtils.toString(exception);
+        }
+
+    }
+
+    @Override
+    public void updateWriteValueErrorMessage(final String completeAttributeName, final String errorMessage) {
         // Nothing to do
 
     }
 
     @Override
-    public void updateAttributeInfoErrorMessage(String completeAttributeName, String errorMessage) {
+    public void updateAttributeInfoErrorMessage(final String completeAttributeName, final String errorMessage) {
         // Nothing to do
     }
 
     @Override
     public void readingLoopFinished() {
-        state = DeviceState.getDeviceState(qualityManager.getHighestPriorityState());
-        status = "At least one attribute is of quality " + qualityManager.getHighestPriorityQualityAsString();
+        if (errorReportMap.isEmpty()) {
+            state = DeviceState.getDeviceState(qualityManager.getHighestPriorityState());
+            status = "At least one attribute is of quality " + qualityManager.getHighestPriorityQualityAsString();
+        }
     }
 
     public Map<String, String> getErrorReportMap() {
@@ -130,7 +124,5 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
     public String getStatus() {
         return status;
     }
-
-
 
 }
