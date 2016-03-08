@@ -72,7 +72,7 @@ public final class AttributeComposer {
      */
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 
-    private final Logger logger = LoggerFactory.getLogger(AttributeComposer.class);
+    private Logger logger;
 
     private final XLogger xlogger = XLoggerFactory.getXLogger(AttributeComposer.class);
 
@@ -454,47 +454,107 @@ public final class AttributeComposer {
         return QualityUtilities.QUALITYIST;
     }
 
+    /**
+     * circuit breaker pattern for initializing the device
+     *
+     * @author ABEILLE
+     *
+     */
+    private class InitCommand {
+
+        private static final int RETRIES_BEFORE_OPEN_CIRCUIT_BREAKER = 3;
+        private static final int WAIT_CIRCUIT_BREAKER_OPEN = 30000;
+        private static final int WAIT_CIRCUIT_BREAKER_CLOSE = 3000;
+        private int retryNr = 0;
+
+        public void execute() throws DevFailed {
+            createAttributeGroup();
+
+            // add attribute for group to write on it
+            final GroupAttribute meanAttribute = new GroupAttribute("mean", false,
+                    fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
+            dynMngt.addAttribute(meanAttribute);
+
+            configureCustomPriorityList();
+
+            // create a timer to read attributes
+            valueReader = new AttributeComposerReader(attributeGroup, meanAttribute, qualityManager);
+            final AttributeGroupReader task = new AttributeGroupReader(valueReader, attributeGroup, false, true, false);
+            readScheduler = new AttributeGroupScheduler();
+            readScheduler.start(task, internalReadingPeriod);
+            // future = executor.scheduleAtFixedRate(valueReader.getTask(), 0L, internalReadingPeriod,
+            // TimeUnit.MILLISECONDS);
+
+            // retrieve device names from attribute names
+            final Set<String> deviceNameList = new HashSet<String>();
+            for (final String element : fullAttributeNameList) {
+                final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
+                deviceNameList.add(deviceName);
+            }
+            logger.debug("doing state composition {}", isStateComposer);
+            // configure state composition
+            if (isStateComposer) {
+                stateReader = new StateResolver(internalReadingPeriod, false);
+                stateReader.configurePriorities(statePriorities);
+                stateReader.setMonitoredDevices(individualTimeout,
+                        deviceNameList.toArray(new String[deviceNameList.size()]));
+                stateReader.start(device.getName());
+            }
+
+            // creat dynamic group command
+            createDynamicCommands(deviceNameList);
+
+        }
+
+        public void getFallback() {
+            retryNr++;
+            try {
+                logger.info("init failure fallback");
+                partialDelete();
+                dynMngt.clearAttributesWithExclude("log");
+            } catch (final DevFailed e1) {
+                // ignore
+            }
+            // wait before retrying
+            if (retryNr == RETRIES_BEFORE_OPEN_CIRCUIT_BREAKER) {
+                retryNr = 0;
+                try {
+                    Thread.sleep(WAIT_CIRCUIT_BREAKER_OPEN);
+                } catch (final InterruptedException e1) {
+                    Thread.currentThread().interrupt();
+                }
+            } else {
+                try {
+                    Thread.sleep(WAIT_CIRCUIT_BREAKER_CLOSE);
+                } catch (final InterruptedException e1) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+        }
+    }
+
     @Init(lazyLoading = true)
     public void initDevice() throws DevFailed {
         xlogger.entry();
-
-        createAttributeGroup();
-
-        // add attribute for group to write on it
-        final GroupAttribute meanAttribute = new GroupAttribute("mean", false,
-                fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
-        dynMngt.addAttribute(meanAttribute);
-
-        configureCustomPriorityList();
-
-        // create a timer to read attributes
-        // executor = Executors.newScheduledThreadPool(1);
-        valueReader = new AttributeComposerReader(attributeGroup, meanAttribute, qualityManager);
-        final AttributeGroupReader task = new AttributeGroupReader(valueReader, attributeGroup, false, true, false);
-        readScheduler = new AttributeGroupScheduler();
-        readScheduler.start(task, internalReadingPeriod);
-        // future = executor.scheduleAtFixedRate(valueReader.getTask(), 0L, internalReadingPeriod,
-        // TimeUnit.MILLISECONDS);
-
-        // retrieve device names from attribute names
-        final Set<String> deviceNameList = new HashSet<String>();
-        for (final String element : fullAttributeNameList) {
-            final String deviceName = TangoUtil.getfullDeviceNameForAttribute(element);
-            deviceNameList.add(deviceName);
+        logger = LoggerFactory.getLogger(AttributeComposer.class.getSimpleName() + "." + device.getName());
+        dynMngt.addAttribute(new org.tango.server.attribute.log.LogAttribute(1000, logger));
+        boolean ok = false;
+        final InitCommand cmd = new InitCommand();
+        while (!ok) {
+            try {
+                logger.info("trying init");
+                status = "trying to init";
+                cmd.execute();
+                ok = true;
+            } catch (final DevFailed e) {
+                logger.error("init failed: {}", DevFailedUtils.toString(e));
+                ok = false;
+                status = "INIT FAILED, will retry in a while\n";
+                status = status + DevFailedUtils.toString(e);
+                cmd.getFallback();
+            }
         }
-        logger.debug("doing state composition {}", isStateComposer);
-        // configure state composition
-        if (isStateComposer) {
-            stateReader = new StateResolver(internalReadingPeriod, false);
-            stateReader.configurePriorities(statePriorities);
-            stateReader.setMonitoredDevices(individualTimeout,
-                    deviceNameList.toArray(new String[deviceNameList.size()]));
-            stateReader.start(device.getName());
-        }
-
-        // creat dynamic group command
-        createDynamicCommands(deviceNameList);
-
         xlogger.exit();
     }
 
@@ -546,21 +606,24 @@ public final class AttributeComposer {
 
     @Delete
     public void deleteDevice() throws DevFailed {
+        partialDelete();
+        dynMngt.clearAll();
+    }
+
+    /**
+     * clear to retry init
+     *
+     * @throws DevFailed
+     */
+    private void partialDelete() throws DevFailed {
         fullAttributeNameList.clear();
         if (stateReader != null) {
             stateReader.stop();
             stateReader = null;
         }
-        // if (future != null) {
-        // future.cancel(true);
-        // }
-        // if (executor != null) {
-        // executor.shutdownNow();
-        // }
         if (readScheduler != null) {
             readScheduler.stop();
         }
-        dynMngt.clearAll();
     }
 
     /**
