@@ -555,6 +555,7 @@ public final class AttributeComposer {
                 cmd.getFallback();
             }
         }
+        logger.info("init OK");
         xlogger.exit();
     }
 
@@ -580,7 +581,7 @@ public final class AttributeComposer {
         }
 
         attributeGroup = new TangoGroupAttribute(false, fullAttributeNameList.toArray(new String[fullAttributeNameList
-                                                                                                 .size()]));
+                .size()]));
         attributeNameArray = new String[fullAttributeNameList.size()];
         int i = 0;
         for (final String attribute : fullAttributeNameList) {
