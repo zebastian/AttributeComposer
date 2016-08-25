@@ -37,7 +37,9 @@ import org.tango.server.device.DeviceManager;
 import org.tango.server.dynamic.DynamicManager;
 import org.tango.server.dynamic.attribute.GroupAttribute;
 import org.tango.server.dynamic.command.GroupCommand;
+import org.tango.utils.CircuitBreakerCommand;
 import org.tango.utils.DevFailedUtils;
+import org.tango.utils.SimpleCircuitBreaker;
 import org.tango.utils.TangoUtil;
 
 import fr.esrf.Tango.DevFailed;
@@ -460,15 +462,13 @@ public final class AttributeComposer {
      * @author ABEILLE
      *
      */
-    private class InitCommand {
+    private class InitCommand implements CircuitBreakerCommand {
 
-        private static final int RETRIES_BEFORE_OPEN_CIRCUIT_BREAKER = 3;
-        private static final int WAIT_CIRCUIT_BREAKER_OPEN = 30000;
-        private static final int WAIT_CIRCUIT_BREAKER_CLOSE = 3000;
-        private int retryNr = 0;
-
+        @Override
         public void execute() throws DevFailed {
             createAttributeGroup();
+            logger.info("trying init");
+            status = "trying to init";
 
             // add attribute for group to write on it
             final GroupAttribute meanAttribute = new GroupAttribute("mean", false,
@@ -506,30 +506,18 @@ public final class AttributeComposer {
 
         }
 
-        public void getFallback() {
-            retryNr++;
-            try {
-                logger.info("init failure fallback");
-                partialDelete();
-                dynMngt.clearAttributesWithExclude("log");
-            } catch (final DevFailed e1) {
-                // ignore
-            }
-            // wait before retrying
-            if (retryNr == RETRIES_BEFORE_OPEN_CIRCUIT_BREAKER) {
-                retryNr = 0;
-                try {
-                    Thread.sleep(WAIT_CIRCUIT_BREAKER_OPEN);
-                } catch (final InterruptedException e1) {
-                    Thread.currentThread().interrupt();
-                }
-            } else {
-                try {
-                    Thread.sleep(WAIT_CIRCUIT_BREAKER_CLOSE);
-                } catch (final InterruptedException e1) {
-                    Thread.currentThread().interrupt();
-                }
-            }
+        @Override
+        public void getFallback() throws DevFailed {
+            logger.info("init failure fallback");
+            partialDelete();
+            dynMngt.clearAttributesWithExclude("log");
+        }
+
+        @Override
+        public void notifyError(final DevFailed e) {
+            logger.error("init failed: {}", DevFailedUtils.toString(e));
+            status = "INIT FAILED, will retry in a while\n";
+            status = status + DevFailedUtils.toString(e);
 
         }
     }
@@ -539,22 +527,7 @@ public final class AttributeComposer {
         xlogger.entry();
         logger = LoggerFactory.getLogger(AttributeComposer.class.getSimpleName() + "." + device.getName());
         dynMngt.addAttribute(new org.tango.server.attribute.log.LogAttribute(1000, logger));
-        boolean ok = false;
-        final InitCommand cmd = new InitCommand();
-        while (!ok) {
-            try {
-                logger.info("trying init");
-                status = "trying to init";
-                cmd.execute();
-                ok = true;
-            } catch (final DevFailed e) {
-                logger.error("init failed: {}", DevFailedUtils.toString(e));
-                ok = false;
-                status = "INIT FAILED, will retry in a while\n";
-                status = status + DevFailedUtils.toString(e);
-                cmd.getFallback();
-            }
-        }
+        new SimpleCircuitBreaker(new InitCommand()).execute();
         logger.info("init OK");
         xlogger.exit();
     }
@@ -581,7 +554,7 @@ public final class AttributeComposer {
         }
 
         attributeGroup = new TangoGroupAttribute(false, fullAttributeNameList.toArray(new String[fullAttributeNameList
-                .size()]));
+                                                                                                 .size()]));
         attributeNameArray = new String[fullAttributeNameList.size()];
         int i = 0;
         for (final String attribute : fullAttributeNameList) {
