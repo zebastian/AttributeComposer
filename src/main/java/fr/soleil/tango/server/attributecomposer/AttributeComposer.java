@@ -515,10 +515,10 @@ public final class AttributeComposer {
 
         @Override
         public void notifyError(final DevFailed e) {
-            logger.error("init failed: {}", DevFailedUtils.toString(e));
-            status = "INIT FAILED, will retry in a while\n";
-            status = status + DevFailedUtils.toString(e);
-
+            final StringBuilder sb = new StringBuilder();
+            sb.append("INIT FAILED, will retry in a while\n").append(DevFailedUtils.toString(e));
+            status = sb.toString();
+            logger.error("{}", status);
         }
     }
 
