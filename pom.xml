@@ -42,26 +42,7 @@
     <developerConnection>${scm.connection.svn.tango-ds}/DeviceClasses/Calculation/AttributeComposer/trunk/</developerConnection>
     <url>${scm.connection.svn.tango-ds}/DeviceClasses/Calculation/AttributeComposer/trunk/</url>
   </scm>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>fr.soleil.maven.plugins</groupId>
-        <artifactId>maven-script-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>install</id>
-            <phase>install</phase>
-            <goals>
-              <goal>generate</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <mainClass>fr.soleil.tango.server.attributecomposer.AttributeComposer</mainClass>
-        </configuration>
-      </plugin>
-    </plugins>
-  </build>
+ 
   <dependencies>
     <dependency>
       <groupId>org.apache.commons</groupId>
