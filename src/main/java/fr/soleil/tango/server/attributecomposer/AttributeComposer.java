@@ -553,8 +553,8 @@ public final class AttributeComposer {
             }
         }
 
-        attributeGroup = new TangoGroupAttribute(false, fullAttributeNameList.toArray(new String[fullAttributeNameList
-                                                                                                 .size()]));
+        attributeGroup = new TangoGroupAttribute(false,
+                fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
         attributeNameArray = new String[fullAttributeNameList.size()];
         int i = 0;
         for (final String attribute : fullAttributeNameList) {
@@ -713,7 +713,7 @@ public final class AttributeComposer {
                     attributeInfo.label = property;
                     break;
                 default:
-                    DevFailedUtils.throwDevFailed("unknown property " + type);
+                    throw DevFailedUtils.newDevFailed("unknown property " + type);
             }
             deviceProxy.set_attribute_info(new AttributeInfo[] { attributeInfo });
         }
@@ -782,7 +782,7 @@ public final class AttributeComposer {
         if (attributeNameList.length > 0 || !attributeNameList[0].trim().isEmpty()) {
             this.attributeNameList = Arrays.copyOf(attributeNameList, attributeNameList.length);
         } else {
-            DevFailedUtils.throwDevFailed("INIT_ERROR", "No attribute defined in property");
+            throw DevFailedUtils.newDevFailed("INIT_ERROR", "No attribute defined in property");
         }
 
     }
