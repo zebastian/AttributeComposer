@@ -11,7 +11,7 @@
 
 	<groupId>fr.soleil.deviceservers</groupId>
 	<artifactId>AttributeComposer</artifactId>
-	<version>4.2.1</version>
+	<version>4.2.2</version>
 	<name>Attribute Composer</name>
 	<description>Attribute Composer Device Server</description>
 	<developers>
@@ -51,11 +51,11 @@
 			<artifactId>commons-math3</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.tango</groupId>
+			<groupId>org.tango-controls</groupId>
 			<artifactId>JTangoClientLang</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.tango</groupId>
+			<groupId>org.tango-controls</groupId>
 			<artifactId>JTangoServer</artifactId>
 		</dependency>
 	</dependencies>
