@@ -50,13 +50,11 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-math3</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>org.tango-controls</groupId>
-			<artifactId>JTangoClientLang</artifactId>
-		</dependency>
+		<!-- XXX override version  from parent pom to have latest version that only compile with > java 8 -->
 		<dependency>
 			<groupId>org.tango-controls</groupId>
 			<artifactId>JTangoServer</artifactId>
+			<version>9.5.19</version>
 		</dependency>
 	</dependencies>
 </project>

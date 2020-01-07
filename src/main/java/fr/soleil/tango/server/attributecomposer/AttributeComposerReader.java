@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.tango.DeviceState;
 import org.tango.server.dynamic.attribute.GroupAttribute;
+import org.tango.utils.ArrayUtils;
 import org.tango.utils.DevFailedUtils;
 
 import fr.esrf.Tango.AttrQuality;
@@ -22,34 +23,45 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
      * Dynamic attribute of the device. Read part will be updated here
      */
     private final GroupAttribute attributeToUpdate;
+    private final GroupAttribute attributeToUpdate2;
     private final Map<String, String> errorReportMap = new HashMap<String, String>();
     private final Map<String, Double> attributeValueMap = new HashMap<String, Double>();
+    private final Map<String, Object> spectrumAttributeValueMap = new HashMap<String, Object>();
 
     private DeviceState state = DeviceState.UNKNOWN;
     private String status = "";
 
-    public AttributeComposerReader(final TangoGroupAttribute attributeGroup, final GroupAttribute attributeToUpdate,
-            final PriorityQualityManager qualityManager) {
+    public AttributeComposerReader(final TangoGroupAttribute attributeGroup, final GroupAttribute attributeToUpdate,final GroupAttribute attributeToUpdate2,
+                                   final PriorityQualityManager qualityManager) {
         this.qualityManager = qualityManager;
         this.attributeToUpdate = attributeToUpdate;
+        this.attributeToUpdate2 = attributeToUpdate2;
     }
 
     @Override
     public void updateDeviceAttribute(final DeviceAttribute[] resultGroup) {
         attributeToUpdate.setReadValue(resultGroup);
+        attributeToUpdate2.setReadValue(resultGroup);
     }
 
     @Override
     public void updateReadValue(final String completeAttributeName, final Object value) {
         final double doubleValue;
-        if (value instanceof Boolean) {
-            final boolean boolValue = (Boolean) value;
-            doubleValue = boolValue == true ? 1 : 0;
+        if (value.getClass().isArray()) {
+            // spectrum value
+            spectrumAttributeValueMap.put(completeAttributeName, value);
+            errorReportMap.remove(completeAttributeName);
         } else {
-            doubleValue = Double.valueOf(value.toString());
+            if (value instanceof Boolean) {
+                final boolean boolValue = (Boolean) value;
+                doubleValue = boolValue == true ? 1 : 0;
+            } else {
+                // scalar value
+                doubleValue = Double.valueOf(value.toString());
+            }
+            attributeValueMap.put(completeAttributeName, doubleValue);
+            errorReportMap.remove(completeAttributeName);
         }
-        attributeValueMap.put(completeAttributeName, doubleValue);
-        errorReportMap.remove(completeAttributeName);
     }
 
     @Override
@@ -115,6 +127,10 @@ public final class AttributeComposerReader implements IAttributeGroupTaskListene
 
     public Map<String, Double> getAttributeValueMap() {
         return new HashMap<String, Double>(attributeValueMap);
+    }
+
+    public Map<String, Object> getSpectrumAttributeValueMap() {
+        return new HashMap<String, Object>(spectrumAttributeValueMap);
     }
 
     public DeviceState getState() {

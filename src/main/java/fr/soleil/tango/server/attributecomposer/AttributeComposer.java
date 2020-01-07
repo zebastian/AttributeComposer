@@ -189,7 +189,7 @@ public final class AttributeComposer {
      * Spectrum Result
      */
     @Attribute
-    private double[] spectrumResult = new double[] {};
+    private double[] spectrumResult = new double[]{};
     /**
      * The state of the device
      */
@@ -211,9 +211,6 @@ public final class AttributeComposer {
     @Attribute(displayLevel = DispLevel._EXPERT)
     private static String version;
 
-    /**
-     * Initialize the device.
-     */
 
     /**
      * Execute command "ActivateAll" on device. This command write 1 or true on all the attributes
@@ -287,7 +284,7 @@ public final class AttributeComposer {
                     attributesResultReport[index++] = entry.getKey() + "->" + entry.getValue();
                 }
             } else {
-                attributesResultReport = new String[] { "no value" };
+                attributesResultReport = new String[]{"no value"};
             }
         }
         xlogger.exit();
@@ -355,17 +352,6 @@ public final class AttributeComposer {
         xlogger.exit();
     }
 
-    private int getIndexForAttribute(final String attributeName) {
-        xlogger.entry();
-        int idx = -1;
-        for (int i = 0; i < fullAttributeNameList.size(); i++) {
-            if (fullAttributeNameList.get(i).trim().equalsIgnoreCase(attributeName)) {
-                idx = i;
-            }
-        }
-        xlogger.exit();
-        return idx;
-    }
 
     /**
      * Execute command "GetLogicalChoices" on device. This command return the list of possibles logical gates
@@ -395,9 +381,7 @@ public final class AttributeComposer {
 
     }
 
-    public double[] getSpectrumResult() {
-        xlogger.entry();
-
+    private void updateSpectrumResult() {
         if (valueReader != null) {
             spectrumResult = new double[fullAttributeNameList.size()];
             for (final Map.Entry<String, Double> entry : valueReader.getAttributeValueMap().entrySet()) {
@@ -407,6 +391,11 @@ public final class AttributeComposer {
                 spectrumResult[index] = value;
             }
         }
+    }
+
+    public double[] getSpectrumResult() {
+        xlogger.entry();
+        updateSpectrumResult();
         xlogger.exit();
         return Arrays.copyOf(spectrumResult, spectrumResult.length);
     }
@@ -460,7 +449,6 @@ public final class AttributeComposer {
      * circuit breaker pattern for initializing the device
      *
      * @author ABEILLE
-     *
      */
     private class InitCommand implements CircuitBreakerCommand {
 
@@ -474,11 +462,15 @@ public final class AttributeComposer {
             final GroupAttribute meanAttribute = new GroupAttribute("mean", false,
                     fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
             dynMngt.addAttribute(meanAttribute);
+            // add attribute for composition
+            final GroupAttribute composedAttribute = new GroupAttribute("composition", false, false,
+                    fullAttributeNameList.toArray(new String[fullAttributeNameList.size()]));
+            dynMngt.addAttribute(composedAttribute);
 
             configureCustomPriorityList();
 
             // create a timer to read attributes
-            valueReader = new AttributeComposerReader(attributeGroup, meanAttribute, qualityManager);
+            valueReader = new AttributeComposerReader(attributeGroup, meanAttribute, composedAttribute, qualityManager);
             final AttributeGroupReader task = new AttributeGroupReader(valueReader, attributeGroup, false, true, false);
             readScheduler = new AttributeGroupScheduler();
             readScheduler.start(task, internalReadingPeriod);
@@ -501,7 +493,7 @@ public final class AttributeComposer {
                 stateReader.start(device.getName());
             }
 
-            // creat dynamic group command
+            // create dynamic group command
             createDynamicCommands(deviceNameList);
 
         }
@@ -715,21 +707,13 @@ public final class AttributeComposer {
                 default:
                     throw DevFailedUtils.newDevFailed("unknown property " + type);
             }
-            deviceProxy.set_attribute_info(new AttributeInfo[] { attributeInfo });
+            deviceProxy.set_attribute_info(new AttributeInfo[]{attributeInfo});
         }
         xlogger.exit();
     }
 
-    // public double getMean() {
-    // getSpectrumResult();
-    // if (!ArrayUtils.isEmpty(spectrumResult)) {
-    // mean = StatUtils.mean(spectrumResult);
-    // }
-    // return mean;
-    // }
-
     public double getStd() {
-        getSpectrumResult();
+        updateSpectrumResult();
         if (!ArrayUtils.isEmpty(spectrumResult)) {
             std = Math.sqrt(StatUtils.variance(spectrumResult));
         }
@@ -737,7 +721,7 @@ public final class AttributeComposer {
     }
 
     public double getMax() {
-        getSpectrumResult();
+        updateSpectrumResult();
         if (!ArrayUtils.isEmpty(spectrumResult)) {
             max = StatUtils.max(spectrumResult);
         }
@@ -745,7 +729,7 @@ public final class AttributeComposer {
     }
 
     public double getMin() {
-        getSpectrumResult();
+        updateSpectrumResult();
         if (!ArrayUtils.isEmpty(spectrumResult)) {
             min = StatUtils.min(spectrumResult);
         }
@@ -756,6 +740,18 @@ public final class AttributeComposer {
         // calculate value
         getBooleanSpectrum();
         return booleanResult;
+    }
+
+    private int getIndexForAttribute(final String attributeName) {
+        xlogger.entry();
+        int idx = -1;
+        for (int i = 0; i < fullAttributeNameList.size(); i++) {
+            if (fullAttributeNameList.get(i).trim().equalsIgnoreCase(attributeName)) {
+                idx = i;
+            }
+        }
+        xlogger.exit();
+        return idx;
     }
 
     public String getLastStateEvent() {
