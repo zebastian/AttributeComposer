@@ -40,10 +40,9 @@
         </developer>
     </developers>
     <scm>
-        <connection>${scm.connection.svn.tango-ds}/DeviceClasses/Calculation/AttributeComposer/trunk/</connection>
-        <developerConnection>${scm.connection.svn.tango-ds}/DeviceClasses/Calculation/AttributeComposer/trunk/
-        </developerConnection>
-        <url>${scm.connection.svn.tango-ds}/DeviceClasses/Calculation/AttributeComposer/trunk/</url>
+        <connection>scm:git:git@gitlab.synchrotron-soleil.fr:software-control-system/tango-devices/softwaresystem/attributecomposer.git</connection>
+        <developerConnection>scm:git:git@gitlab.synchrotron-soleil.fr:software-control-system/tango-devices/softwaresystem/attributecomposer.git</developerConnection>
+        <url>https://gitlab.synchrotron-soleil.fr/software-control-system/tango-devices/softwaresystem/attributecomposer</url>
     </scm>
 
     <dependencies>
