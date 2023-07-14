@@ -3,11 +3,6 @@
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
         xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <artifactId>java-updated-versions</artifactId>
-        <groupId>fr.soleil.maven.parent</groupId>
-        <version>0-SNAPSHOT</version>
-    </parent>
 
     <groupId>fr.soleil.deviceservers</groupId>
     <artifactId>AttributeComposer</artifactId>
@@ -44,18 +39,37 @@
         <developerConnection>scm:git:git@gitlab.synchrotron-soleil.fr:software-control-system/tango-devices/softwaresystem/attributecomposer.git</developerConnection>
         <url>https://gitlab.synchrotron-soleil.fr/software-control-system/tango-devices/softwaresystem/attributecomposer</url>
     </scm>
-
-    <dependencies>
+	<dependencies>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-math3</artifactId>
+            <version>3.6.1</version>
         </dependency>
 
         <dependency>
             <groupId>org.tango-controls</groupId>
             <artifactId>JTangoServer</artifactId>
+            <version>9.6.0</version>
         </dependency>
-
-
+                
     </dependencies>
+    <build>
+     <plugins>
+       <plugin>
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-jar-plugin</artifactId>
+         <version>3.3.0</version>
+         <configuration>
+           <archive>
+             <index>true</index>
+             <manifest>
+               <addClasspath>true</addClasspath>
+               <mainClass>fr.soleil.tango.server.attributecomposer.AttributeComposer</mainClass>
+             </manifest>
+           </archive>
+         </configuration>
+       </plugin>
+     </plugins>
+    </build>
+
 </project>
